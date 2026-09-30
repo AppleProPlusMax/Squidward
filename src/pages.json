@@ -1,0 +1,22 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "海克斯助手"
+      }
+    },
+    {
+      "path": "pages/champion/champion",
+      "style": {
+        "navigationBarTitleText": "英雄推荐"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "海克斯助手",
+    "navigationBarBackgroundColor": "#12141c",
+    "backgroundColor": "#12141c"
+  }
+}

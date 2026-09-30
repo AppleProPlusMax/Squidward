@@ -1,0 +1,16 @@
+{
+  "miniprogramRoot": "dist/build/mp-weixin/",
+  "projectname": "hex-aram-helper",
+  "description": "uni-app 编译产物，请用 npm run dev:mp-weixin 生成后再预览",
+  "appid": "wx9366ff12476b1021",
+  "compileType": "miniprogram",
+  "libVersion": "trial",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "minified": true,
+    "postcss": true,
+    "enhance": true
+  },
+  "condition": {}
+}
