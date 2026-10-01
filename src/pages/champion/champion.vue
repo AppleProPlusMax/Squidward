@@ -18,34 +18,45 @@
     </view>
 
     <view class="section">构建方案</view>
-    <view class="hint">海克斯按搭配胜率排序，装备取这个英雄样本里胜率最高的几件。</view>
-    <view v-for="hex in augments" :key="hex.name" class="plan">
+    <view class="hint">每套方案先放核心海克斯和备选。能直接购买的装备按出场次数排列，需要对应海克斯才能拿到的装备写在那一套最前面。</view>
+    <view v-for="plan in plans" :key="plan.name" class="plan">
       <view class="plan-head">
-        <view class="badge" :class="hex.grade">{{ hex.grade }}</view>
+        <view class="badge" :class="plan.grade">{{ plan.grade }}</view>
         <view class="plan-copy">
-          <view class="plan-name">{{ hex.name }}</view>
-          <view class="meta">胜率 {{ hex.winRate }}% · 样本 {{ formatGames(hex.games) }}</view>
+          <view class="plan-name">{{ plan.name }}</view>
+          <view class="meta">搭配胜率 {{ plan.winRate }}% · 样本 {{ formatGames(plan.games) }}</view>
+        </view>
+      </view>
+      <view class="hex-row">
+        <view class="hex-group">
+          <view class="role-tag">
+            <text>核</text>
+            <text>心</text>
+          </view>
+          <view class="hex-cell">
+            <image class="icon" :src="plan.icon" mode="aspectFill" />
+            <text class="hex-name">{{ plan.name }}</text>
+          </view>
+        </view>
+        <view v-if="plan.backups.length" class="hex-group">
+          <view class="role-tag">
+            <text>备</text>
+            <text>选</text>
+          </view>
+          <view v-for="backup in plan.backups" :key="backup.name" class="hex-cell">
+            <image class="icon" :src="backup.icon" mode="aspectFill" />
+            <text class="hex-name">{{ backup.name }}</text>
+          </view>
         </view>
       </view>
       <view class="gear">
-        <view class="piece">
-          <image class="icon core" :src="hex.icon" mode="aspectFill" />
-          <text class="piece-name">核心</text>
+        <view v-for="item in plan.items" :key="item.name" class="item-cell">
+          <view class="item-icon">
+            <image class="icon" :class="{ reward: item.reward }" :src="item.icon" mode="aspectFill" />
+            <text class="num" :class="{ prize: item.reward }">{{ item.reward ? "奖" : item.order }}</text>
+          </view>
+          <text class="item-name">{{ item.name }}</text>
         </view>
-        <view v-for="(item, index) in items.slice(0, 4)" :key="item.name" class="piece">
-          <image class="icon" :src="item.icon" mode="aspectFill" />
-          <text class="piece-name">{{ index + 1 }} {{ item.name }}</text>
-        </view>
-      </view>
-    </view>
-
-    <view class="section">推荐出装</view>
-    <view v-if="items.length === 0" class="hint">这个英雄暂时没有出装样本</view>
-    <view v-for="item in items" :key="item.name" class="item-row">
-      <image class="icon" :src="item.icon" mode="aspectFill" />
-      <view class="plan-copy">
-        <view class="plan-name">{{ item.name }}</view>
-        <view class="meta">胜率 {{ item.winRate }}% · 样本 {{ formatGames(item.games) }}</view>
       </view>
     </view>
   </view>
@@ -55,6 +66,7 @@
 import { ref, computed } from "vue"
 import { onLoad } from "@dcloudio/uni-app"
 import catalog from "../../../data/catalog.js"
+import gatedItems from "../../common/gated-items.js"
 
 const missing = ref(false)
 const champion = ref({
@@ -67,13 +79,45 @@ const champion = ref({
   grade: "",
   icon: ""
 })
-const augments = ref([])
-const items = ref([])
+const plans = ref([])
 
 const gamesText = computed(() => formatGames(champion.value.games))
 
 function formatGames(value) {
   return String(value || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+}
+
+function grantsItem(hexName, itemName) {
+  const required = gatedItems[itemName]
+  return !!required && hexName.indexOf(required) >= 0
+}
+
+function shopItems(items) {
+  return items
+    .filter((item) => !gatedItems[item.name])
+    .slice()
+    .sort((a, b) => b.games - a.games || b.winRate - a.winRate)
+    .slice(0, 6)
+}
+
+function buildPlans(augments, items) {
+  const common = shopItems(items)
+  return augments.map((hex) => {
+    const reward = items
+      .filter((item) => grantsItem(hex.name, item.name))
+      .map((item) => ({ ...item, reward: true }))
+    const backups = augments.filter((item) => item.name !== hex.name).slice(0, 2)
+    const numbered = common.map((item, index) => ({ ...item, order: index + 1 }))
+    return {
+      name: hex.name,
+      icon: hex.icon,
+      grade: hex.grade,
+      winRate: hex.winRate,
+      games: hex.games,
+      backups,
+      items: reward.concat(numbered)
+    }
+  })
 }
 
 onLoad((query) => {
@@ -94,8 +138,7 @@ onLoad((query) => {
     grade: found.grade,
     icon: found.icon
   }
-  augments.value = found.augments || []
-  items.value = found.items || []
+  plans.value = buildPlans(found.augments || [], found.items || [])
 })
 </script>
 
@@ -221,25 +264,89 @@ onLoad((query) => {
   font-weight: 700;
 }
 
+.hex-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 28rpx;
+  margin-top: 22rpx;
+}
+
+.hex-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 8rpx;
+}
+
+.role-tag {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 28rpx;
+  height: 88rpx;
+  color: #8b93a7;
+  font-size: 20rpx;
+  line-height: 1.15;
+}
+
+.hex-cell {
+  width: 128rpx;
+}
+
+.hex-name,
+.item-name {
+  display: block;
+  margin-top: 8rpx;
+  color: #d5dbe8;
+  font-size: 20rpx;
+  line-height: 1.3;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .gear {
   display: flex;
   flex-wrap: wrap;
-  gap: 12rpx;
-  margin-top: 16rpx;
+  margin-top: 22rpx;
 }
 
-.piece {
-  width: 120rpx;
+.item-cell {
+  width: 25%;
+  margin-bottom: 18rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-.icon.core {
-  border: 2rpx solid #d27cff;
+.item-icon {
+  position: relative;
+  width: 88rpx;
+  height: 88rpx;
 }
 
-.piece-name {
-  display: block;
-  margin-top: 6rpx;
-  line-height: 1.3;
+.icon.reward {
+  border: 2rpx solid #e0b15a;
+}
+
+.num {
+  position: absolute;
+  top: -8rpx;
+  right: -8rpx;
+  width: 30rpx;
+  height: 30rpx;
+  border-radius: 50%;
+  background: #3d7eff;
+  color: #fff;
+  font-size: 18rpx;
+  line-height: 30rpx;
+  text-align: center;
+}
+
+.num.prize {
+  background: #e0b15a;
+  color: #1a1408;
 }
 
 .empty {

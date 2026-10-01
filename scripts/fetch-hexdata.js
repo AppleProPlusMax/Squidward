@@ -168,8 +168,8 @@ function main() {
         hero,
         pickRate: pick,
         tierLabel: tierMatch ? tierMatch[1] : "",
-        augments: (tables[0] || []).slice(0, 6),
-        items: (tables[1] || []).slice(0, 6)
+        augments: (tables[0] || []).slice(0, 8),
+        items: (tables[1] || []).slice(0, 12)
       })
     } catch (err) {
       failed.push(hero.key + " " + err.message)
