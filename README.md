@@ -1,27 +1,37 @@
 # 海克斯大乱斗助手
 
-英雄联盟「海克斯大乱斗」微信小程序。输入英雄名称，查看当前版本的强度、推荐海克斯和核心出装。
+英雄联盟「海克斯大乱斗」微信小程序。按胜率查看英雄和海克斯，点进英雄可以看到围绕每个海克斯的构建方案。
 
 ## 功能
 
-- **英雄强度**：按 OP.GG 排名浏览英雄，支持中文名、称号和英文 key 搜索，例如「盖伦」「安妮」「nautilus」。
-- **英雄详情**：每个英雄给出棱彩、黄金、白银各 5 个推荐海克斯，以及 3 套核心出装。
-- **海克斯强度**：按表现分查看当前仍在使用的海克斯，并附带简短效果说明。
+- **英雄图鉴**：173 位英雄按胜率排序，卡片上有排名、头像和 SS / S / A / B 评级。可按战士、法师、坦克、刺客、射手、软辅筛选。
+- **搜索**：支持中文名、称号、昵称、全拼和首字母。例如「剑圣」「jiansheng」「js」「轮子妈」「vn」「男枪」。
+- **海克斯**：按胜率浏览海克斯，可按稀有度筛选为全部、白银、黄金、棱彩。
+- **构建方案**：每个方案以一个海克斯为核心，旁边给出两个备选。能直接购买的装备按出场次数排列；金铲铲、终极九头蛇这类装备只出现在对应海克斯的方案里，并标成「奖」。
 
 ## 数据说明
 
-数据来自 [OP.GG 海克斯大乱斗](https://op.gg/zh-cn/lol/modes/aram-mayhem)，当前快照版本为 **16.19**。
+胜率来自 [Hexdata](https://hexdata.com.cn/heroes)，当前快照为 **16.19**（2026-09-27）。
 
-OP.GG 这个模式公开的是段位、表现分和选用率，没有原始对局胜率百分比。选用率为 0 的海克斯视为已下架，不会进入排行。例如「王中王，靴中靴」表现分很高，但选用率为 0，因此不会排在第一位。
+评级阈值：SS ≥ 56%，S ≥ 53%，A ≥ 50%，B ≥ 47%。
 
-更新数据可在项目根目录执行：
+英雄头像来自 Data Dragon。海克斯和装备图标、海克斯稀有度来自 OP.GG。小程序里的列表使用本地快照 `data/catalog.js`，打开页面时不再请求这些接口。
+
+真机要显示图片，需要在微信公众平台把下面两个地址加到 **downloadFile 合法域名**：
+
+- `https://ddragon.leagueoflegends.com`
+- `https://opgg-static.akamaized.net`
+
+开发者工具里勾选「不校验合法域名」即可本地预览。
+
+更新胜率快照可在项目根目录执行：
 
 ```bash
-node scripts/build-catalog.js
+node scripts/fetch-hexdata.js
 npm run build:mp-weixin
 ```
 
-`scripts/build-catalog.js` 会重新抓取 OP.GG 页面并写回 `data/catalog.js`。
+`scripts/fetch-hexdata.js` 会重写 `data/catalog.js`，并重新生成拼音和昵称索引。
 
 ## 技术栈
 
@@ -45,9 +55,9 @@ npm run build:mp-weixin
 ## 目录
 
 ```text
-src/pages/index       首页：搜索、英雄强度、海克斯强度
-src/pages/champion    英雄详情：推荐海克斯和出装
-src/manifest.json     小程序 AppID 等配置
-data/catalog.js       OP.GG 数据快照
-scripts/build-catalog.js  重新抓取数据
+src/pages/index            首页：搜索、英雄图鉴、海克斯列表
+src/pages/champion         英雄详情：按海克斯拆开的构建方案
+src/common                 稀有度文案、限定装备、英雄搜索索引
+data/catalog.js            Hexdata 胜率快照
+scripts/fetch-hexdata.js   重新抓取胜率并生成搜索索引
 ```
