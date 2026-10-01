@@ -5,12 +5,19 @@
       "style": {
         "navigationBarTitleText": "首页"
       }
-    },
+    }
+  ],
+  "subPackages": [
     {
-      "path": "pages/champion/champion",
-      "style": {
-        "navigationBarTitleText": "英雄推荐"
-      }
+      "root": "pages/champion",
+      "pages": [
+        {
+          "path": "champion",
+          "style": {
+            "navigationBarTitleText": "英雄推荐"
+          }
+        }
+      ]
     }
   ],
   "globalStyle": {

@@ -18,7 +18,8 @@
     </view>
 
     <view class="section">构建方案</view>
-    <view class="hint">每套方案先放核心海克斯和备选。能直接购买的装备按出场次数排列，需要对应海克斯才能拿到的装备写在那一套最前面。</view>
+    <view v-if="plans.length === 0" class="hint">这个英雄暂时没有海克斯和出装样本。</view>
+    <view v-else class="hint">每套方案先放核心海克斯和备选。能直接购买的装备按出场次数排列，需要对应海克斯才能拿到的装备写在那一套最前面。</view>
     <view v-for="plan in plans" :key="plan.name" class="plan">
       <view class="plan-head">
         <view class="badge" :class="plan.grade">{{ plan.grade }}</view>

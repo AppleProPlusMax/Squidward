@@ -14,6 +14,23 @@ function get(url) {
   ).toString("utf8")
 }
 
+function sleep(seconds) {
+  if (seconds <= 0) return
+  execFileSync("powershell", ["-Command", "Start-Sleep -Seconds " + seconds], { stdio: "ignore" })
+}
+
+function getPage(url) {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const html = get(url)
+    const limited = html.match(/"retryAfterSeconds"\s*:\s*(\d+)/)
+    if (!limited && html.indexOf("<tbody>") >= 0) return html
+    const wait = limited ? Number(limited[1]) + 1 : 4
+    console.log("wait", wait, url)
+    sleep(wait)
+  }
+  return ""
+}
+
 function readCatalog() {
   const raw = fs.readFileSync(CATALOG, "utf8").replace(/^export default\s+/, "").replace(/;\s*$/, "")
   return JSON.parse(raw)
@@ -77,6 +94,13 @@ function parseHeroList(html) {
     })
   })
   return heroes
+}
+
+function parseBlurb(html) {
+  const paragraph = (html.match(/<p>Patch[\s\S]*?<\/p>/) || [""])[0].replace(/<[^>]+>/g, "")
+  if (paragraph.indexOf("选取率") >= 0) return paragraph
+  const meta = html.match(/<meta name="description" content="([^"]*)"/)
+  return meta ? meta[1] : paragraph
 }
 
 function parseStatTable(html) {
@@ -161,17 +185,21 @@ function main() {
   const failed = []
   let done = 0
   listed.forEach((hero) => {
+    let html = ""
     try {
-      const html = get("https://hexdata.com.cn/hero/" + hero.slug)
+      html = getPage("https://hexdata.com.cn/hero/" + hero.slug)
+      sleep(2)
       const tables = parseStatTable(html)
-      const blurb = (html.match(/<p>Patch[\s\S]*?<\/p>/) || [""])[0].replace(/<[^>]+>/g, "")
+      const blurb = parseBlurb(html)
       const pick = percent((blurb.match(/选取率\s*[\d.]+%/) || [""])[0])
       const tierMatch = blurb.match(/层级\s*(T\d|OP)/)
+      const augments = (tables[0] || []).slice(0, 8)
+      if (!augments.length) failed.push(hero.key + " empty")
       details.push({
         hero,
         pickRate: pick,
         tierLabel: tierMatch ? tierMatch[1] : "",
-        augments: (tables[0] || []).slice(0, 8),
+        augments,
         items: (tables[1] || []).slice(0, 12)
       })
     } catch (err) {
@@ -181,7 +209,12 @@ function main() {
     if (done % 20 === 0) console.log("pages", done)
   })
 
-  if (failed.length) console.log("failed", failed.join(" | "))
+  if (failed.length) console.log("failed", failed.length, failed.slice(0, 12).join(" | "))
+  const filled = details.filter((row) => row.augments.length && row.pickRate).length
+  if (filled < 150) {
+    console.error("only", filled, "heroes have both a pick rate and augments")
+    process.exit(1)
+  }
 
   const byWin = details.slice().sort((a, b) => b.hero.winRate - a.hero.winRate || b.hero.games - a.hero.games)
   const champions = byWin.map((row, index) => {
@@ -206,7 +239,7 @@ function main() {
         winRate: item.winRate,
         games: item.games,
         grade: grade(item.winRate),
-        icon: augmentIcon[item.name] || ""
+        icon: iconOf(item.name)
       })),
       items: row.items.map((item) => ({
         name: item.name,
@@ -217,6 +250,14 @@ function main() {
       }))
     }
   })
+
+  function iconOf(name) {
+    if (augmentIcon[name]) return augmentIcon[name]
+    const hit = Object.keys(augmentIcon)
+      .filter((key) => key && name.endsWith(key))
+      .sort((a, b) => b.length - a.length)[0]
+    return hit ? augmentIcon[hit] : ""
+  }
 
   function rarityOf(name) {
     if (augmentRarity[name]) return augmentRarity[name]
@@ -241,7 +282,7 @@ function main() {
       score: Number((summary.match(/综合评分\s*([\d.]+)/) || [])[1]) || 0,
       winRate: percent((summary.match(/胜率\s*[\d.]+%/) || [""])[0]),
       rarity: rarityOf(link.text),
-      icon: augmentIcon[link.text] || ""
+      icon: iconOf(link.text)
     })
   })
   augments.sort((a, b) => b.winRate - a.winRate)
@@ -261,11 +302,39 @@ function main() {
     champions
   }
   fs.writeFileSync(CATALOG, "export default " + JSON.stringify(next) + ";\n")
+  writeGallery(next)
   const missingAug = champions.reduce((sum, champ) => sum + champ.augments.filter((item) => !item.icon).length, 0)
   const missingItem = champions.reduce((sum, champ) => sum + champ.items.filter((item) => !item.icon).length, 0)
   console.log("wrote", champions.length, "top", champions[0].title, champions[0].winRate)
   console.log("missing augment icons", missingAug, "missing item icons", missingItem)
   execFileSync(process.execPath, [path.join(__dirname, "build-search-index.js")], { stdio: "inherit" })
+}
+
+function writeGallery(catalog) {
+  const gallery = {
+    patch: catalog.patch,
+    note: catalog.note,
+    champions: catalog.champions.map((item) => ({
+      key: item.key,
+      name: item.name,
+      title: item.title,
+      tags: item.tags || [],
+      winRate: item.winRate,
+      grade: item.grade,
+      rank: item.rank,
+      icon: item.icon
+    })),
+    augments: catalog.augments.map((item) => ({
+      id: item.id,
+      name: item.name,
+      winRate: item.winRate,
+      grade: item.grade,
+      icon: item.icon,
+      rank: item.rank,
+      rarity: item.rarity || 0
+    }))
+  }
+  fs.writeFileSync(path.join(ROOT, "data", "gallery.js"), "export default " + JSON.stringify(gallery) + ";\n")
 }
 
 main()

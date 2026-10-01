@@ -22,19 +22,25 @@
       <view class="tab" :class="{ on: tab === 'augment' }" @tap="onTab('augment')">海克斯</view>
     </view>
 
-    <scroll-view class="roles" scroll-x>
-      <view
-        v-for="item in chips"
-        :key="item.id"
-        class="role"
-        :class="{ on: chip === item.id }"
-        @tap="onChip(item.id)"
-      >{{ item.label }}</view>
+    <scroll-view class="roles" :class="{ off: tab !== 'champion' }" scroll-x>
+      <view class="role" :class="{ on: role === 'all' }" @tap="onChip('all')">全部</view>
+      <view class="role" :class="{ on: role === 'Fighter' }" @tap="onChip('Fighter')">战士</view>
+      <view class="role" :class="{ on: role === 'Mage' }" @tap="onChip('Mage')">法师</view>
+      <view class="role" :class="{ on: role === 'Tank' }" @tap="onChip('Tank')">坦克</view>
+      <view class="role" :class="{ on: role === 'Assassin' }" @tap="onChip('Assassin')">刺客</view>
+      <view class="role" :class="{ on: role === 'Marksman' }" @tap="onChip('Marksman')">射手</view>
+      <view class="role" :class="{ on: role === 'Support' }" @tap="onChip('Support')">软辅</view>
+    </scroll-view>
+    <scroll-view class="roles" :class="{ off: tab !== 'augment' }" scroll-x>
+      <view class="role" :class="{ on: rarity === 'all' }" @tap="onChip('all')">全部</view>
+      <view class="role" :class="{ on: rarity === '1' }" @tap="onChip('1')">白银</view>
+      <view class="role" :class="{ on: rarity === '4' }" @tap="onChip('4')">黄金</view>
+      <view class="role" :class="{ on: rarity === '8' }" @tap="onChip('8')">棱彩</view>
     </scroll-view>
 
     <view class="note">{{ note }}</view>
 
-    <view v-show="tab === 'champion'">
+    <view class="panel" :class="{ off: tab !== 'champion' }">
       <view v-if="champions.length === 0" class="empty">没有找到这个英雄</view>
       <view v-else class="grid">
         <view v-for="item in champions" :key="item.key" class="card" @tap="openChampion(item.key)">
@@ -49,7 +55,7 @@
       </view>
     </view>
 
-    <view v-show="tab === 'augment'">
+    <view class="panel" :class="{ off: tab !== 'augment' }">
       <view v-if="augments.length === 0" class="empty">没有找到这个海克斯</view>
       <view v-else>
         <view v-for="item in augments" :key="item.id" class="hex-row">
@@ -67,27 +73,10 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue"
-import catalog from "../../../data/catalog.js"
+import { ref } from "vue"
+import gallery from "../../../data/gallery.js"
 import championSearch from "../../common/champion-index.js"
-import { rarityLabel, tierLabel } from "../../common/meta.js"
-
-const roles = [
-  { id: "all", label: "全部" },
-  { id: "Fighter", label: "战士" },
-  { id: "Mage", label: "法师" },
-  { id: "Tank", label: "坦克" },
-  { id: "Assassin", label: "刺客" },
-  { id: "Marksman", label: "射手" },
-  { id: "Support", label: "软辅" }
-]
-
-const rarities = [
-  { id: "all", label: "全部" },
-  { id: "1", label: rarityLabel(1) },
-  { id: "4", label: rarityLabel(4) },
-  { id: "8", label: rarityLabel(8) }
-]
+import { tierLabel } from "../../common/meta.js"
 
 const tierAnchor = tierLabel(1)
 
@@ -95,15 +84,13 @@ const keyword = ref("")
 const tab = ref("champion")
 const role = ref("all")
 const rarity = ref("all")
-const patch = catalog.patch
-const total = catalog.champions.length
-const note = catalog.note
+const patch = gallery.patch
+const total = gallery.champions.length
+const note = gallery.note
 const champions = ref([])
 const augments = ref([])
-const chips = computed(() => (tab.value === "champion" ? roles : rarities))
-const chip = computed(() => (tab.value === "champion" ? role.value : rarity.value))
 
-const allChampions = catalog.champions.map((item) => ({
+const allChampions = gallery.champions.map((item) => ({
   key: item.key,
   name: item.name,
   title: item.title,
@@ -115,7 +102,7 @@ const allChampions = catalog.champions.map((item) => ({
   search: (championSearch[item.key] || (item.name + item.title + item.key).toLowerCase()).split("|")
 }))
 
-const allAugments = catalog.augments.map((item) => ({
+const allAugments = gallery.augments.map((item) => ({
   id: item.id,
   name: item.name,
   winRate: item.winRate,
@@ -226,6 +213,11 @@ applyFilter("")
 .roles {
   margin-top: 20rpx;
   white-space: nowrap;
+}
+
+.roles.off,
+.panel.off {
+  display: none;
 }
 
 .tabs {
