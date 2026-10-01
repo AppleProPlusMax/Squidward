@@ -248,6 +248,9 @@ async function main() {
   fs.writeFileSync(OUT, "export default " + JSON.stringify(catalog) + ";\n");
   const stat = fs.statSync(OUT);
   console.log("wrote", OUT, stat.size);
+  require("child_process").execFileSync(process.execPath, [path.join(__dirname, "enrich-icons.js")], {
+    stdio: "inherit"
+  });
 }
 
 main().catch((err) => {

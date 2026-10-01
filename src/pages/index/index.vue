@@ -29,6 +29,7 @@
         @tap="openChampion(item.key)"
       >
         <view class="rank">{{ item.rank }}</view>
+        <image class="avatar" :src="item.icon" mode="aspectFill" />
         <view class="main">
           <view class="name">{{ item.name }}</view>
           <view class="title">{{ item.title }}</view>
@@ -39,8 +40,9 @@
 
     <block v-else>
       <view v-if="augments.length === 0" class="empty">没有找到这个海克斯</view>
-      <view v-for="item in augments" :key="item.id" class="item">
+      <view v-for="item in augments" :key="item.id" class="item aug" :class="'r' + item.rarity">
         <view class="rank">{{ item.rank }}</view>
+        <image class="hex-icon" :src="item.icon" mode="aspectFill" />
         <view class="main">
           <view class="name">{{ item.name }} <text class="pill">{{ item.rarityLabel }}</text></view>
           <view class="title">{{ item.desc }}</view>
@@ -74,16 +76,19 @@ const allChampions = catalog.champions.map((item) => ({
   tier: item.tier,
   tierLabel: tierLabel(item.tier),
   rank: item.rank,
+  icon: item.icon,
   search: (item.name + item.title + item.key).toLowerCase()
 }))
 
 const allAugments = catalog.augments.map((item, index) => ({
   id: item.id,
   name: item.name,
+  rarity: item.rarity,
   rarityLabel: rarityLabel(item.rarity),
   performance: item.performance,
   popular: item.popular,
   desc: item.desc,
+  icon: item.icon,
   rank: index + 1,
   search: item.name.toLowerCase()
 }))
@@ -165,18 +170,44 @@ applyFilter("")
 .item {
   display: flex;
   align-items: center;
-  gap: 20rpx;
+  gap: 16rpx;
   background: #1c2030;
   border-radius: 16rpx;
-  padding: 20rpx;
+  padding: 16rpx 18rpx;
   margin-bottom: 12rpx;
 }
 
 .rank {
-  width: 56rpx;
+  width: 48rpx;
   text-align: center;
   color: #c8a15a;
   font-weight: 700;
+  flex-shrink: 0;
+}
+
+.avatar,
+.hex-icon {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 16rpx;
+  background: #0e1018;
+  flex-shrink: 0;
+}
+
+.hex-icon {
+  border: 2rpx solid #3a4258;
+}
+
+.aug.r1 .hex-icon {
+  border-color: #b9c4d6;
+}
+
+.aug.r4 .hex-icon {
+  border-color: #e0b15a;
+}
+
+.aug.r8 .hex-icon {
+  border-color: #d27cff;
 }
 
 .main {
@@ -196,6 +227,12 @@ applyFilter("")
   margin-top: 4rpx;
 }
 
+.title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .tier {
   min-width: 72rpx;
   text-align: center;
@@ -203,6 +240,7 @@ applyFilter("")
   padding: 8rpx 0;
   font-weight: 700;
   background: #2a3144;
+  flex-shrink: 0;
 }
 
 .tier.t0,
@@ -226,6 +264,7 @@ applyFilter("")
 .stats {
   text-align: right;
   font-weight: 700;
+  flex-shrink: 0;
 }
 
 .empty {

@@ -5,21 +5,25 @@
 
   <view v-else class="page">
     <view class="head">
-      <view>
+      <image class="portrait" :src="champion.icon" mode="aspectFill" />
+      <view class="head-main">
         <view class="name">{{ champion.name }}</view>
         <view class="title">{{ champion.title }}</view>
+        <view class="meta">强度排名 {{ champion.rank }}</view>
       </view>
       <view class="tier">{{ champion.tierLabel }}</view>
     </view>
-    <view class="meta">强度排名 {{ champion.rank }}</view>
 
     <view class="section">推荐海克斯</view>
-    <view class="hint">按 OP.GG 表现分排序，同一品质取前 5。对局里优先拿表现分更高的。</view>
+    <view class="hint">同一品质取表现分靠前的 5 个。对局里优先拿更高的。</view>
     <view v-for="group in groups" :key="group.label" class="group">
       <view class="group-title">{{ group.label }}</view>
-      <view v-for="hex in group.items" :key="hex.id" class="hex">
-        <view class="hex-name">{{ hex.name }}</view>
-        <view class="hex-stat">表现 {{ hex.performance }} · 选用 {{ hex.popular }}%</view>
+      <view v-for="hex in group.items" :key="hex.id" class="hex" :class="'r' + hex.rarity">
+        <image class="hex-icon" :src="hex.icon" mode="aspectFill" />
+        <view class="hex-main">
+          <view class="hex-name">{{ hex.name }}</view>
+          <view class="hex-stat">表现 {{ hex.performance }} · 选用 {{ hex.popular }}%</view>
+        </view>
       </view>
     </view>
 
@@ -27,7 +31,15 @@
     <view v-if="builds.length === 0" class="hint">这个英雄暂时没有核心出装</view>
     <view v-for="item in builds" :key="item.index" class="build">
       <view class="build-index">方案 {{ item.index }}</view>
-      <view class="build-items">{{ item.names }}</view>
+      <view class="gear">
+        <block v-for="(piece, pieceIndex) in item.items" :key="piece.name">
+          <text v-if="pieceIndex > 0" class="arrow">›</text>
+          <view class="piece">
+            <image class="item-icon" :src="piece.icon" mode="aspectFill" />
+            <text class="piece-name">{{ piece.name }}</text>
+          </view>
+        </block>
+      </view>
     </view>
   </view>
 </template>
@@ -43,7 +55,8 @@ const champion = ref({
   name: "",
   title: "",
   tierLabel: "",
-  rank: ""
+  rank: "",
+  icon: ""
 })
 const groups = ref([])
 const builds = ref([])
@@ -66,15 +79,16 @@ onLoad((query) => {
   groups.value = order
     .filter((label) => grouped[label] && grouped[label].length)
     .map((label) => ({ label, items: grouped[label] }))
-  builds.value = (found.cores || []).map((names, index) => ({
+  builds.value = (found.cores || []).map((row, index) => ({
     index: index + 1,
-    names: names.join(" → ")
+    items: row.map((entry) => (typeof entry === "string" ? { name: entry, icon: "" } : entry))
   }))
   champion.value = {
     name: found.name,
     title: found.title,
     tierLabel: tierLabel(found.tier),
-    rank: found.rank
+    rank: found.rank,
+    icon: found.icon
   }
 })
 </script>
@@ -86,12 +100,28 @@ onLoad((query) => {
 
 .head {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 20rpx;
+  background: #1c2030;
+  border-radius: 20rpx;
+  padding: 24rpx;
+}
+
+.portrait {
+  width: 128rpx;
+  height: 128rpx;
+  border-radius: 20rpx;
+  background: #0e1018;
+  flex-shrink: 0;
+}
+
+.head-main {
+  flex: 1;
+  min-width: 0;
 }
 
 .name {
-  font-size: 44rpx;
+  font-size: 40rpx;
   font-weight: 700;
 }
 
@@ -99,13 +129,14 @@ onLoad((query) => {
 .meta,
 .hint,
 .hex-stat,
-.build-index {
+.build-index,
+.piece-name {
   color: #9aa3b5;
   font-size: 24rpx;
 }
 
 .meta {
-  margin: 12rpx 0 28rpx;
+  margin-top: 8rpx;
 }
 
 .tier {
@@ -114,10 +145,11 @@ onLoad((query) => {
   font-weight: 700;
   border-radius: 12rpx;
   padding: 10rpx 20rpx;
+  flex-shrink: 0;
 }
 
 .section {
-  margin: 28rpx 0 12rpx;
+  margin: 32rpx 0 12rpx;
   font-size: 32rpx;
   font-weight: 700;
 }
@@ -128,25 +160,83 @@ onLoad((query) => {
 
 .group-title {
   color: #c8a15a;
-  margin-bottom: 8rpx;
+  margin: 8rpx 0;
 }
 
 .hex,
 .build {
   background: #1c2030;
   border-radius: 16rpx;
-  padding: 18rpx 20rpx;
+  padding: 16rpx 18rpx;
   margin-bottom: 12rpx;
 }
 
-.hex-name,
-.build-items {
-  font-size: 28rpx;
+.hex {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
 }
 
-.build-items {
+.hex-icon,
+.item-icon {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 14rpx;
+  background: #0e1018;
+  flex-shrink: 0;
+}
+
+.hex-icon {
+  border: 2rpx solid #3a4258;
+}
+
+.hex.r1 .hex-icon {
+  border-color: #b9c4d6;
+}
+
+.hex.r4 .hex-icon {
+  border-color: #e0b15a;
+}
+
+.hex.r8 .hex-icon {
+  border-color: #d27cff;
+}
+
+.hex-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.hex-name {
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.gear {
+  display: flex;
+  align-items: flex-start;
+  margin-top: 16rpx;
+}
+
+.piece {
+  width: 132rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.piece-name {
   margin-top: 8rpx;
-  line-height: 1.5;
+  text-align: center;
+  line-height: 1.3;
+  font-size: 20rpx;
+}
+
+.arrow {
+  color: #6d7688;
+  font-size: 36rpx;
+  line-height: 72rpx;
+  padding: 0 4rpx;
 }
 
 .empty {
