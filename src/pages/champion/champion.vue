@@ -35,27 +35,73 @@
           </view>
           <view class="hex-cell">
             <image class="icon" :src="plan.icon" mode="aspectFill" />
-            <text class="hex-name">{{ plan.name }}</text>
+            <view class="hex-name">{{ plan.name }}</view>
           </view>
         </view>
-        <view v-if="plan.backups.length" class="hex-group">
+        <view v-if="plan.backupName1" class="hex-group">
           <view class="role-tag">
             <text>备</text>
             <text>选</text>
           </view>
-          <view v-for="backup in plan.backups" :key="backup.name" class="hex-cell">
-            <image class="icon" :src="backup.icon" mode="aspectFill" />
-            <text class="hex-name">{{ backup.name }}</text>
+          <view class="hex-cell">
+            <image class="icon" :src="plan.backupIcon1" mode="aspectFill" />
+            <view class="hex-name">{{ plan.backupName1 }}</view>
+          </view>
+          <view v-if="plan.backupName2" class="hex-cell">
+            <image class="icon" :src="plan.backupIcon2" mode="aspectFill" />
+            <view class="hex-name">{{ plan.backupName2 }}</view>
           </view>
         </view>
       </view>
       <view class="gear">
-        <view v-for="item in plan.items" :key="item.name" class="item-cell">
+        <view v-if="plan.itemName0" class="item-cell">
           <view class="item-icon">
-            <image class="icon" :class="{ reward: item.reward }" :src="item.icon" mode="aspectFill" />
-            <text class="num" :class="{ prize: item.reward }">{{ item.reward ? "奖" : item.order }}</text>
+            <image class="icon" :class="{ reward: plan.itemPrize0 }" :src="plan.itemIcon0" mode="aspectFill" />
+            <text class="num" :class="{ prize: plan.itemPrize0 }">{{ plan.itemMark0 }}</text>
           </view>
-          <text class="item-name">{{ item.name }}</text>
+          <view class="item-name">{{ plan.itemName0 }}</view>
+        </view>
+        <view v-if="plan.itemName1" class="item-cell">
+          <view class="item-icon">
+            <image class="icon" :class="{ reward: plan.itemPrize1 }" :src="plan.itemIcon1" mode="aspectFill" />
+            <text class="num" :class="{ prize: plan.itemPrize1 }">{{ plan.itemMark1 }}</text>
+          </view>
+          <view class="item-name">{{ plan.itemName1 }}</view>
+        </view>
+        <view v-if="plan.itemName2" class="item-cell">
+          <view class="item-icon">
+            <image class="icon" :class="{ reward: plan.itemPrize2 }" :src="plan.itemIcon2" mode="aspectFill" />
+            <text class="num" :class="{ prize: plan.itemPrize2 }">{{ plan.itemMark2 }}</text>
+          </view>
+          <view class="item-name">{{ plan.itemName2 }}</view>
+        </view>
+        <view v-if="plan.itemName3" class="item-cell">
+          <view class="item-icon">
+            <image class="icon" :class="{ reward: plan.itemPrize3 }" :src="plan.itemIcon3" mode="aspectFill" />
+            <text class="num" :class="{ prize: plan.itemPrize3 }">{{ plan.itemMark3 }}</text>
+          </view>
+          <view class="item-name">{{ plan.itemName3 }}</view>
+        </view>
+        <view v-if="plan.itemName4" class="item-cell">
+          <view class="item-icon">
+            <image class="icon" :class="{ reward: plan.itemPrize4 }" :src="plan.itemIcon4" mode="aspectFill" />
+            <text class="num" :class="{ prize: plan.itemPrize4 }">{{ plan.itemMark4 }}</text>
+          </view>
+          <view class="item-name">{{ plan.itemName4 }}</view>
+        </view>
+        <view v-if="plan.itemName5" class="item-cell">
+          <view class="item-icon">
+            <image class="icon" :class="{ reward: plan.itemPrize5 }" :src="plan.itemIcon5" mode="aspectFill" />
+            <text class="num" :class="{ prize: plan.itemPrize5 }">{{ plan.itemMark5 }}</text>
+          </view>
+          <view class="item-name">{{ plan.itemName5 }}</view>
+        </view>
+        <view v-if="plan.itemName6" class="item-cell">
+          <view class="item-icon">
+            <image class="icon" :class="{ reward: plan.itemPrize6 }" :src="plan.itemIcon6" mode="aspectFill" />
+            <text class="num" :class="{ prize: plan.itemPrize6 }">{{ plan.itemMark6 }}</text>
+          </view>
+          <view class="item-name">{{ plan.itemName6 }}</view>
         </view>
       </view>
     </view>
@@ -108,15 +154,25 @@ function buildPlans(augments, items) {
       .map((item) => ({ ...item, reward: true }))
     const backups = augments.filter((item) => item.name !== hex.name).slice(0, 2)
     const numbered = common.map((item, index) => ({ ...item, order: index + 1 }))
-    return {
+    const gear = reward.concat(numbered).slice(0, 7)
+    const plan = {
       name: hex.name,
       icon: hex.icon,
       grade: hex.grade,
       winRate: hex.winRate,
       games: hex.games,
-      backups,
-      items: reward.concat(numbered)
+      backupIcon1: backups[0] ? backups[0].icon : "",
+      backupName1: backups[0] ? backups[0].name : "",
+      backupIcon2: backups[1] ? backups[1].icon : "",
+      backupName2: backups[1] ? backups[1].name : ""
     }
+    gear.forEach((item, index) => {
+      plan["itemIcon" + index] = item.icon
+      plan["itemName" + index] = item.name
+      plan["itemMark" + index] = item.reward ? "奖" : String(item.order)
+      plan["itemPrize" + index] = !!item.reward
+    })
+    return plan
   })
 }
 
@@ -163,6 +219,7 @@ onLoad((query) => {
   border-radius: 16rpx;
   background: #0e1018;
   flex-shrink: 0;
+  display: block;
 }
 
 .portrait {
@@ -290,16 +347,20 @@ onLoad((query) => {
 }
 
 .hex-cell {
-  width: 128rpx;
+  width: 132rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .hex-name,
 .item-name {
-  display: block;
+  width: 100%;
   margin-top: 8rpx;
   color: #d5dbe8;
   font-size: 20rpx;
-  line-height: 1.3;
+  line-height: 28rpx;
+  height: 28rpx;
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -22,19 +22,19 @@
       <view class="tab" :class="{ on: tab === 'augment' }" @tap="onTab('augment')">海克斯</view>
     </view>
 
-    <scroll-view v-if="tab === 'champion'" class="roles" scroll-x>
+    <scroll-view class="roles" scroll-x>
       <view
-        v-for="item in roles"
+        v-for="item in chips"
         :key="item.id"
         class="role"
-        :class="{ on: role === item.id }"
-        @tap="onRole(item.id)"
+        :class="{ on: chip === item.id }"
+        @tap="onChip(item.id)"
       >{{ item.label }}</view>
     </scroll-view>
 
     <view class="note">{{ note }}</view>
 
-    <block v-if="tab === 'champion'">
+    <view v-show="tab === 'champion'">
       <view v-if="champions.length === 0" class="empty">没有找到这个英雄</view>
       <view v-else class="grid">
         <view v-for="item in champions" :key="item.key" class="card" @tap="openChampion(item.key)">
@@ -47,28 +47,30 @@
           <view class="win">{{ item.winRate }}%</view>
         </view>
       </view>
-    </block>
+    </view>
 
-    <block v-else>
+    <view v-show="tab === 'augment'">
       <view v-if="augments.length === 0" class="empty">没有找到这个海克斯</view>
-      <view v-for="item in augments" :key="item.id" class="hex-row">
-        <view class="rank">{{ item.rank }}</view>
-        <image class="hex-icon" :src="item.icon" mode="aspectFill" />
-        <view class="main">
-          <view class="name">{{ item.name }}</view>
-          <view class="title">胜率 {{ item.winRate }}%</view>
+      <view v-else>
+        <view v-for="item in augments" :key="item.id" class="hex-row">
+          <view class="rank">{{ item.rank }}</view>
+          <image class="hex-icon" :src="item.icon" mode="aspectFill" />
+          <view class="main">
+            <view class="name">{{ item.name }}</view>
+            <view class="title">胜率 {{ item.winRate }}%</view>
+          </view>
+          <view class="badge sm" :class="item.grade">{{ item.grade }}</view>
         </view>
-        <view class="badge sm" :class="item.grade">{{ item.grade }}</view>
       </view>
-    </block>
+    </view>
   </view>
 </template>
 
 <script setup>
-import { ref } from "vue"
+import { computed, ref } from "vue"
 import catalog from "../../../data/catalog.js"
 import championSearch from "../../common/champion-index.js"
-import { tierLabel } from "../../common/meta.js"
+import { rarityLabel, tierLabel } from "../../common/meta.js"
 
 const roles = [
   { id: "all", label: "全部" },
@@ -80,16 +82,26 @@ const roles = [
   { id: "Support", label: "软辅" }
 ]
 
+const rarities = [
+  { id: "all", label: "全部" },
+  { id: "1", label: rarityLabel(1) },
+  { id: "4", label: rarityLabel(4) },
+  { id: "8", label: rarityLabel(8) }
+]
+
 const tierAnchor = tierLabel(1)
 
 const keyword = ref("")
 const tab = ref("champion")
 const role = ref("all")
+const rarity = ref("all")
 const patch = catalog.patch
 const total = catalog.champions.length
 const note = catalog.note
 const champions = ref([])
 const augments = ref([])
+const chips = computed(() => (tab.value === "champion" ? roles : rarities))
+const chip = computed(() => (tab.value === "champion" ? role.value : rarity.value))
 
 const allChampions = catalog.champions.map((item) => ({
   key: item.key,
@@ -110,6 +122,7 @@ const allAugments = catalog.augments.map((item) => ({
   grade: item.grade,
   icon: item.icon,
   rank: item.rank,
+  rarity: String(item.rarity || ""),
   search: item.name.toLowerCase()
 }))
 
@@ -135,7 +148,10 @@ function applyFilter(text) {
     .filter((item) => role.value === "all" || item.tags.indexOf(role.value) >= 0)
     .filter((item) => matchScore(item, query) < 2)
     .sort((a, b) => matchScore(a, query) - matchScore(b, query) || a.rank - b.rank)
-  augments.value = allAugments.filter((item) => !query || item.search.indexOf(query) >= 0)
+  augments.value = allAugments
+    .filter((item) => rarity.value === "all" || item.rarity === rarity.value)
+    .filter((item) => !query || item.search.indexOf(query) >= 0)
+    .map((item, index) => ({ ...item, rank: index + 1 }))
 }
 
 function onInput(event) {
@@ -148,8 +164,9 @@ function onTab(next) {
   applyFilter(keyword.value)
 }
 
-function onRole(next) {
-  role.value = next
+function onChip(next) {
+  if (tab.value === "champion") role.value = next
+  else rarity.value = next
   applyFilter(keyword.value)
 }
 

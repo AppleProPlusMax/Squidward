@@ -127,8 +127,11 @@ function main() {
     if (item.name && item.image_url) itemIcon[item.name] = item.image_url
   })
   const augmentMeta = JSON.parse(get("https://lol-api-champion.op.gg/api/meta/aram-augments?hl=zh_CN")).data
+  const augmentRarity = {}
   augmentMeta.forEach((item) => {
-    if (!item.name || !item.largeIcon) return
+    if (!item.name) return
+    if (item.rarity != null) augmentRarity[item.name] = item.rarity
+    if (!item.largeIcon) return
     const url = item.largeIcon.includes("?") ? item.largeIcon : item.largeIcon + "?image=q_auto:good,f_png,w_128"
     augmentIcon[item.name] = url
   })
@@ -215,6 +218,14 @@ function main() {
     }
   })
 
+  function rarityOf(name) {
+    if (augmentRarity[name]) return augmentRarity[name]
+    const hit = Object.keys(augmentRarity)
+      .filter((key) => key && name.endsWith(key))
+      .sort((a, b) => b.length - a.length)[0]
+    return hit ? augmentRarity[hit] : 0
+  }
+
   console.log("fetch augment list")
   const augmentRows = parseRows(get("https://hexdata.com.cn/augments"))
   const augments = []
@@ -229,6 +240,7 @@ function main() {
       name: link.text,
       score: Number((summary.match(/综合评分\s*([\d.]+)/) || [])[1]) || 0,
       winRate: percent((summary.match(/胜率\s*[\d.]+%/) || [""])[0]),
+      rarity: rarityOf(link.text),
       icon: augmentIcon[link.text] || ""
     })
   })
