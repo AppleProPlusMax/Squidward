@@ -251,6 +251,9 @@ async function main() {
   require("child_process").execFileSync(process.execPath, [path.join(__dirname, "enrich-icons.js")], {
     stdio: "inherit"
   });
+  require("child_process").execFileSync(process.execPath, [path.join(__dirname, "fetch-hexdata.js")], {
+    stdio: "inherit"
+  });
 }
 
 main().catch((err) => {

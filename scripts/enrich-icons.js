@@ -71,6 +71,9 @@ function main() {
   console.log("champions missing icon", missingChampions.join(",") || "none");
   console.log("global augments missing icon", missingAugments);
   console.log("items missing icon", Object.keys(missingItems).join(" | ") || "none");
+  execFileSync(process.execPath, [path.join(__dirname, "build-search-index.js")], {
+    stdio: "inherit"
+  });
 }
 
 main();
