@@ -1,6 +1,7 @@
 const fs = require("fs")
 const path = require("path")
 const { execFileSync } = require("child_process")
+const { pickItemIcons } = require("./item-icons")
 
 const ROOT = path.join(__dirname, "..")
 const CATALOG = path.join(ROOT, "data", "catalog.js")
@@ -147,9 +148,7 @@ function main() {
   })
 
   const itemMeta = JSON.parse(get("https://lol-api-champion.op.gg/api/meta/items?hl=zh_CN")).data
-  itemMeta.forEach((item) => {
-    if (item.name && item.image_url) itemIcon[item.name] = item.image_url
-  })
+  Object.assign(itemIcon, pickItemIcons(itemMeta))
   const augmentMeta = JSON.parse(get("https://lol-api-champion.op.gg/api/meta/aram-augments?hl=zh_CN")).data
   const augmentRarity = {}
   augmentMeta.forEach((item) => {
