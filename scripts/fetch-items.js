@@ -5,7 +5,11 @@ const { execFileSync } = require("child_process")
 const ROOT = path.join(__dirname, "..")
 const CATALOG = path.join(ROOT, "data", "catalog.js")
 const OUT = path.join(ROOT, "data", "items.js")
-const HERO_LIMIT = 15
+const CACHE = path.join(ROOT, "data", ".item-pages.json")
+const GAP = 3
+const HERO_LIMIT = 12
+const MIN_GAMES = 20000
+const MIN_HEROES = 8
 
 const GATED = {
   金铲铲: "海牛阿福的勇士",
@@ -18,6 +22,26 @@ function get(url) {
   return execFileSync("curl.exe", ["-sL", "--compressed", "-A", "Mozilla/5.0", "--max-time", "40", url], {
     maxBuffer: 50 * 1024 * 1024
   }).toString("utf8")
+}
+
+function sleep(seconds) {
+  if (seconds <= 0) return
+  execFileSync("powershell", ["-Command", "Start-Sleep -Seconds " + seconds], { stdio: "ignore" })
+}
+
+// 两次请求都没有英雄表就当作这件装备没有页面；限流时按服务器给的时间等待后重试
+function getPage(url) {
+  let misses = 0
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const html = get(url)
+    const limited = html.match(/"retryAfterSeconds"\s*:\s*(\d+)/)
+    if (!limited && html.indexOf("<tbody>") >= 0) return html
+    if (!limited && ++misses >= 2) return ""
+    const wait = limited ? Number(limited[1]) + 1 : 4
+    console.log("wait", wait, url)
+    sleep(wait)
+  }
+  return ""
 }
 
 function readCatalog() {
@@ -68,6 +92,29 @@ function parseDescription(html) {
   return { stats, effect }
 }
 
+function parseHeroes(html) {
+  const body = (html.match(/<tbody>([\s\S]*?)<\/tbody>/) || [])[1] || ""
+  const rows = []
+  const re = /<tr>([\s\S]*?)<\/tr>/g
+  let match
+  while ((match = re.exec(body))) {
+    const link = match[1].match(/<a href="\/hero\/(\d+)-([^"]+)">([^<]*)<\/a>/)
+    if (!link) continue
+    const cells = []
+    const cellRe = /<td>([\s\S]*?)<\/td>/g
+    let cell
+    while ((cell = cellRe.exec(match[1]))) cells.push(cell[1].replace(/<[^>]+>/g, "").trim())
+    rows.push({
+      key: link[2],
+      score: number(cells[1]),
+      winRate: number(cells[2]),
+      pickRate: number(cells[3]),
+      games: count(cells[4])
+    })
+  }
+  return rows
+}
+
 function parseSummary(html) {
   const body = (html.match(/<tbody>([\s\S]*?)<\/tbody>/) || [])[1] || ""
   const rows = {}
@@ -92,7 +139,6 @@ function parseSummary(html) {
 function main() {
   const catalog = readCatalog()
   const items = {}
-  const users = {}
   let version = ""
   catalog.champions.forEach((champ) => {
     const hit = String(champ.icon || "").match(/cdn\/([\d.]+)\//)
@@ -100,15 +146,6 @@ function main() {
     ;(champ.items || []).forEach((item) => {
       const id = (String(item.icon || "").match(/\/item\/(\d+)\.png/) || [])[1]
       if (id && !items[id]) items[id] = { id, name: item.name, icon: item.icon }
-      ;(users[item.name] = users[item.name] || []).push({
-        key: champ.key,
-        title: champ.title,
-        icon: champ.icon,
-        winRate: item.winRate,
-        score: item.score,
-        games: item.games,
-        grade: grade(item.winRate)
-      })
     })
   })
   if (!version) throw new Error("no ddragon version in catalog")
@@ -125,6 +162,18 @@ function main() {
 
   const summary = parseSummary(get("https://hexdata.com.cn/items"))
 
+  // 详情页按装备名称找 Hexdata 的编号，图标编号是其他模式的副本，对不上页面
+  const pageIds = {}
+  const linkRe = /<a href="\/item\/(\d+)">([^<]*)<\/a>/g
+  let link
+  const listHtml = get("https://hexdata.com.cn/items")
+  while ((link = linkRe.exec(listHtml))) pageIds[link[2].trim()] = link[1]
+
+  const champions = {}
+  catalog.champions.forEach((champ) => {
+    champions[champ.key] = champ
+  })
+
   const hexByItem = {}
   catalog.augments.forEach((hex) => {
     Object.keys(GATED).forEach((name) => {
@@ -134,9 +183,30 @@ function main() {
     })
   })
 
-  const out = {}
+  const cached = fs.existsSync(CACHE) ? JSON.parse(fs.readFileSync(CACHE, "utf8")) : {}
   const failed = []
-  Object.keys(items).forEach((id) => {
+  const ids = Object.keys(items)
+  ids.forEach((id, index) => {
+    const base = items[id]
+    const pageId = pageIds[base.name]
+    if (cached[id] || !pageId) return
+    const html = getPage("https://hexdata.com.cn/item/" + pageId)
+    sleep(GAP)
+    if (!html) {
+      failed.push(base.name + " empty " + pageId)
+      return
+    }
+    const page = html.replace(/<script[\s\S]*?<\/script>/g, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ")
+    cached[id] = {
+      summary: (page.match(/：加权胜率[^。]*。/) || [""])[0],
+      heroes: parseHeroes(html)
+    }
+    fs.writeFileSync(CACHE, JSON.stringify(cached))
+    if ((index + 1) % 10 === 0) console.log("pages", index + 1, "/", ids.length)
+  })
+
+  const out = {}
+  ids.forEach((id) => {
     const base = items[id]
     const ddId = dd[id] ? id : ddByName[base.name]
     const info = ddId ? dd[ddId] : null
@@ -145,13 +215,25 @@ function main() {
       .filter((part) => dd[part])
       .map((part) => ({ name: dd[part].name, icon: ddIcon(part) }))
     const stat = summary[base.name] || {}
-    const heroes = (users[base.name] || [])
-      .slice()
-      .sort((a, b) => b.score - a.score || b.games - a.games)
+    const page = cached[id]
+    const rows = (page ? page.heroes : []).filter((row) => champions[row.key])
+    const solid = rows.filter((row) => row.games >= MIN_GAMES)
+    const heroes = (solid.length >= MIN_HEROES ? solid : rows)
       .slice(0, HERO_LIMIT)
+      .map((row) => ({
+        key: row.key,
+        title: champions[row.key].title,
+        icon: champions[row.key].icon,
+        winRate: row.winRate,
+        pickRate: row.pickRate,
+        score: row.score,
+        games: row.games,
+        grade: grade(row.winRate)
+      }))
 
     if (!info) failed.push(base.name + " no ddragon")
     if (!stat.winRate) failed.push(base.name + " no summary")
+    if (!page) failed.push(base.name + " no page")
     out[id] = {
       id,
       name: base.name,
@@ -172,11 +254,12 @@ function main() {
   })
 
   if (failed.length) console.log("failed", failed.length, failed.join(" | "))
-  if (failed.length > 5) {
-    console.error("too many items without data")
+  const fetched = ids.filter((id) => cached[id]).length
+  fs.writeFileSync(OUT, "export default " + JSON.stringify(out) + ";\n")
+  if (fetched < ids.length - 5) {
+    console.error("only", fetched, "item pages fetched, rerun to continue")
     process.exit(1)
   }
-  fs.writeFileSync(OUT, "export default " + JSON.stringify(out) + ";\n")
   console.log("wrote", Object.keys(out).length, "items", fs.statSync(OUT).size, "bytes")
 }
 
