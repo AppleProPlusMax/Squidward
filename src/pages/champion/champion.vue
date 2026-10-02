@@ -35,7 +35,7 @@
             <text>心</text>
           </view>
           <view class="hex-cell" @tap="openAugment(plan.name)">
-            <image class="icon" :src="plan.icon" mode="aspectFill" />
+            <image class="icon hex-frame" :class="'r' + plan.rarity" :src="plan.icon" mode="aspectFill" lazy-load />
             <view class="hex-name">{{ plan.name }}</view>
           </view>
         </view>
@@ -45,11 +45,11 @@
             <text>选</text>
           </view>
           <view class="hex-cell" @tap="openAugment(plan.backupName1)">
-            <image class="icon" :src="plan.backupIcon1" mode="aspectFill" />
+            <image class="icon hex-frame" :class="'r' + plan.backupRarity1" :src="plan.backupIcon1" mode="aspectFill" lazy-load />
             <view class="hex-name">{{ plan.backupName1 }}</view>
           </view>
           <view v-if="plan.backupName2" class="hex-cell" @tap="openAugment(plan.backupName2)">
-            <image class="icon" :src="plan.backupIcon2" mode="aspectFill" />
+            <image class="icon hex-frame" :class="'r' + plan.backupRarity2" :src="plan.backupIcon2" mode="aspectFill" lazy-load />
             <view class="hex-name">{{ plan.backupName2 }}</view>
           </view>
         </view>
@@ -57,49 +57,49 @@
       <view class="gear">
         <view v-if="plan.itemName0" class="item-cell" @tap="openItem(plan.itemId0)">
           <view class="item-icon">
-            <image class="icon" :class="{ reward: plan.itemPrize0 }" :src="plan.itemIcon0" mode="aspectFill" />
+            <image class="icon" :class="{ reward: plan.itemPrize0 }" :src="plan.itemIcon0" mode="aspectFill" lazy-load />
             <text class="num" :class="{ prize: plan.itemPrize0 }">{{ plan.itemMark0 }}</text>
           </view>
           <view class="item-name">{{ plan.itemName0 }}</view>
         </view>
         <view v-if="plan.itemName1" class="item-cell" @tap="openItem(plan.itemId1)">
           <view class="item-icon">
-            <image class="icon" :class="{ reward: plan.itemPrize1 }" :src="plan.itemIcon1" mode="aspectFill" />
+            <image class="icon" :class="{ reward: plan.itemPrize1 }" :src="plan.itemIcon1" mode="aspectFill" lazy-load />
             <text class="num" :class="{ prize: plan.itemPrize1 }">{{ plan.itemMark1 }}</text>
           </view>
           <view class="item-name">{{ plan.itemName1 }}</view>
         </view>
         <view v-if="plan.itemName2" class="item-cell" @tap="openItem(plan.itemId2)">
           <view class="item-icon">
-            <image class="icon" :class="{ reward: plan.itemPrize2 }" :src="plan.itemIcon2" mode="aspectFill" />
+            <image class="icon" :class="{ reward: plan.itemPrize2 }" :src="plan.itemIcon2" mode="aspectFill" lazy-load />
             <text class="num" :class="{ prize: plan.itemPrize2 }">{{ plan.itemMark2 }}</text>
           </view>
           <view class="item-name">{{ plan.itemName2 }}</view>
         </view>
         <view v-if="plan.itemName3" class="item-cell" @tap="openItem(plan.itemId3)">
           <view class="item-icon">
-            <image class="icon" :class="{ reward: plan.itemPrize3 }" :src="plan.itemIcon3" mode="aspectFill" />
+            <image class="icon" :class="{ reward: plan.itemPrize3 }" :src="plan.itemIcon3" mode="aspectFill" lazy-load />
             <text class="num" :class="{ prize: plan.itemPrize3 }">{{ plan.itemMark3 }}</text>
           </view>
           <view class="item-name">{{ plan.itemName3 }}</view>
         </view>
         <view v-if="plan.itemName4" class="item-cell" @tap="openItem(plan.itemId4)">
           <view class="item-icon">
-            <image class="icon" :class="{ reward: plan.itemPrize4 }" :src="plan.itemIcon4" mode="aspectFill" />
+            <image class="icon" :class="{ reward: plan.itemPrize4 }" :src="plan.itemIcon4" mode="aspectFill" lazy-load />
             <text class="num" :class="{ prize: plan.itemPrize4 }">{{ plan.itemMark4 }}</text>
           </view>
           <view class="item-name">{{ plan.itemName4 }}</view>
         </view>
         <view v-if="plan.itemName5" class="item-cell" @tap="openItem(plan.itemId5)">
           <view class="item-icon">
-            <image class="icon" :class="{ reward: plan.itemPrize5 }" :src="plan.itemIcon5" mode="aspectFill" />
+            <image class="icon" :class="{ reward: plan.itemPrize5 }" :src="plan.itemIcon5" mode="aspectFill" lazy-load />
             <text class="num" :class="{ prize: plan.itemPrize5 }">{{ plan.itemMark5 }}</text>
           </view>
           <view class="item-name">{{ plan.itemName5 }}</view>
         </view>
         <view v-if="plan.itemName6" class="item-cell" @tap="openItem(plan.itemId6)">
           <view class="item-icon">
-            <image class="icon" :class="{ reward: plan.itemPrize6 }" :src="plan.itemIcon6" mode="aspectFill" />
+            <image class="icon" :class="{ reward: plan.itemPrize6 }" :src="plan.itemIcon6" mode="aspectFill" lazy-load />
             <text class="num" :class="{ prize: plan.itemPrize6 }">{{ plan.itemMark6 }}</text>
           </view>
           <view class="item-name">{{ plan.itemName6 }}</view>
@@ -171,13 +171,16 @@ function buildPlans(augments, items) {
     const plan = {
       name: hex.name,
       icon: hex.icon,
+      rarity: hex.rarity || 0,
       grade: hex.grade,
       winRate: hex.winRate,
       games: hex.games,
       backupIcon1: backups[0] ? backups[0].icon : "",
       backupName1: backups[0] ? backups[0].name : "",
+      backupRarity1: backups[0] ? backups[0].rarity || 0 : 0,
       backupIcon2: backups[1] ? backups[1].icon : "",
-      backupName2: backups[1] ? backups[1].name : ""
+      backupName2: backups[1] ? backups[1].name : "",
+      backupRarity2: backups[1] ? backups[1].rarity || 0 : 0
     }
     gear.forEach((item, index) => {
       plan["itemId" + index] = itemId(item.icon)
@@ -304,37 +307,6 @@ onLoad((query) => {
   margin-top: 4rpx;
 }
 
-.badge {
-  min-width: 64rpx;
-  padding: 8rpx 12rpx;
-  border-radius: 12rpx;
-  background: #3a4258;
-  color: #f4f1e8;
-  font-weight: 700;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.badge.SS {
-  background: #ff8a1e;
-  color: #1a1004;
-}
-
-.badge.S {
-  background: #e0b15a;
-  color: #1a1408;
-}
-
-.badge.A {
-  background: #d4544a;
-  color: #fff;
-}
-
-.badge.B {
-  background: #3d6fbf;
-  color: #fff;
-}
-
 .section {
   margin: 32rpx 0 12rpx;
   font-size: 32rpx;
@@ -448,11 +420,5 @@ onLoad((query) => {
 .num.prize {
   background: #e0b15a;
   color: #1a1408;
-}
-
-.empty {
-  text-align: center;
-  color: #9aa3b5;
-  padding: 80rpx 0;
 }
 </style>

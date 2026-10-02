@@ -129,7 +129,7 @@ function main() {
   catalog.augments.forEach((hex) => {
     Object.keys(GATED).forEach((name) => {
       if (hex.name.indexOf(GATED[name]) >= 0 && !hexByItem[name]) {
-        hexByItem[name] = { id: hex.id, name: hex.name, icon: hex.icon }
+        hexByItem[name] = { id: hex.id, name: hex.name, icon: hex.icon, rarity: hex.rarity || 0 }
       }
     })
   })

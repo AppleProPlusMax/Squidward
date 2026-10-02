@@ -46,8 +46,8 @@
         <view v-for="item in champions" :key="item.key" class="card" @tap="openChampion(item.key)">
           <view class="shot">
             <text class="no">{{ item.rank }}</text>
-            <image class="face" :src="item.icon" mode="aspectFill" />
-            <text class="badge" :class="item.grade">{{ item.grade }}</text>
+            <image class="face" :src="item.icon" mode="aspectFill" lazy-load />
+            <text class="badge corner" :class="item.grade">{{ item.grade }}</text>
           </view>
           <view class="epithet">{{ item.title }}</view>
           <view class="win">{{ item.winRate }}%</view>
@@ -60,7 +60,7 @@
       <view v-else>
         <view v-for="item in augments" :key="item.id" class="hex-row" @tap="openAugment(item.id)">
           <view class="rank">{{ item.rank }}</view>
-          <image class="hex-icon" :src="item.icon" mode="aspectFill" />
+          <image class="hex-icon hex-frame" :class="'r' + item.rarity" :src="item.icon" mode="aspectFill" lazy-load />
           <view class="main">
             <view class="name">{{ item.name }}</view>
             <view class="title">胜率 {{ item.winRate }}%</view>
@@ -221,11 +221,6 @@ applyFilter("")
   white-space: nowrap;
 }
 
-.roles.off,
-.panel.off {
-  display: none;
-}
-
 .tabs {
   display: flex;
   gap: 16rpx;
@@ -292,7 +287,7 @@ applyFilter("")
   text-align: center;
 }
 
-.badge {
+.badge.corner {
   position: absolute;
   right: 4rpx;
   bottom: 4rpx;
@@ -300,35 +295,7 @@ applyFilter("")
   min-width: 36rpx;
   padding: 2rpx 8rpx;
   border-radius: 8rpx;
-  background: #3a4258;
-  color: #f4f1e8;
   font-size: 20rpx;
-  font-weight: 700;
-  text-align: center;
-}
-
-.badge.sm {
-  position: static;
-}
-
-.badge.SS {
-  background: #ff8a1e;
-  color: #1a1004;
-}
-
-.badge.S {
-  background: #e0b15a;
-  color: #1a1408;
-}
-
-.badge.A {
-  background: #d4544a;
-  color: #fff;
-}
-
-.badge.B {
-  background: #3d6fbf;
-  color: #fff;
 }
 
 .epithet,
@@ -384,11 +351,5 @@ applyFilter("")
   color: #9aa3b5;
   font-size: 22rpx;
   margin-top: 4rpx;
-}
-
-.empty {
-  text-align: center;
-  color: #9aa3b5;
-  padding: 80rpx 0;
 }
 </style>

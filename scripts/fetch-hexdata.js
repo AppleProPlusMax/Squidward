@@ -238,7 +238,8 @@ function main() {
         winRate: item.winRate,
         games: item.games,
         grade: grade(item.winRate),
-        icon: iconOf(item.name)
+        icon: iconOf(item.name),
+        rarity: rarityOf(item.name)
       })),
       items: row.items.map((item) => ({
         name: item.name,
