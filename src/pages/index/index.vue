@@ -58,7 +58,7 @@
     <view class="panel" :class="{ off: tab !== 'augment' }">
       <view v-if="augments.length === 0" class="empty">没有找到这个海克斯</view>
       <view v-else>
-        <view v-for="item in augments" :key="item.id" class="hex-row">
+        <view v-for="item in augments" :key="item.id" class="hex-row" @tap="openAugment(item.id)">
           <view class="rank">{{ item.rank }}</view>
           <image class="hex-icon" :src="item.icon" mode="aspectFill" />
           <view class="main">
@@ -160,6 +160,12 @@ function onChip(next) {
 function openChampion(key) {
   uni.navigateTo({
     url: "/pages/champion/champion?key=" + key
+  })
+}
+
+function openAugment(id) {
+  uni.navigateTo({
+    url: "/pages/augment/augment?id=" + id
   })
 }
 

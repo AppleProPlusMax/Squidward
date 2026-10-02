@@ -34,7 +34,7 @@
             <text>核</text>
             <text>心</text>
           </view>
-          <view class="hex-cell">
+          <view class="hex-cell" @tap="openAugment(plan.name)">
             <image class="icon" :src="plan.icon" mode="aspectFill" />
             <view class="hex-name">{{ plan.name }}</view>
           </view>
@@ -44,60 +44,60 @@
             <text>备</text>
             <text>选</text>
           </view>
-          <view class="hex-cell">
+          <view class="hex-cell" @tap="openAugment(plan.backupName1)">
             <image class="icon" :src="plan.backupIcon1" mode="aspectFill" />
             <view class="hex-name">{{ plan.backupName1 }}</view>
           </view>
-          <view v-if="plan.backupName2" class="hex-cell">
+          <view v-if="plan.backupName2" class="hex-cell" @tap="openAugment(plan.backupName2)">
             <image class="icon" :src="plan.backupIcon2" mode="aspectFill" />
             <view class="hex-name">{{ plan.backupName2 }}</view>
           </view>
         </view>
       </view>
       <view class="gear">
-        <view v-if="plan.itemName0" class="item-cell">
+        <view v-if="plan.itemName0" class="item-cell" @tap="openItem(plan.itemId0)">
           <view class="item-icon">
             <image class="icon" :class="{ reward: plan.itemPrize0 }" :src="plan.itemIcon0" mode="aspectFill" />
             <text class="num" :class="{ prize: plan.itemPrize0 }">{{ plan.itemMark0 }}</text>
           </view>
           <view class="item-name">{{ plan.itemName0 }}</view>
         </view>
-        <view v-if="plan.itemName1" class="item-cell">
+        <view v-if="plan.itemName1" class="item-cell" @tap="openItem(plan.itemId1)">
           <view class="item-icon">
             <image class="icon" :class="{ reward: plan.itemPrize1 }" :src="plan.itemIcon1" mode="aspectFill" />
             <text class="num" :class="{ prize: plan.itemPrize1 }">{{ plan.itemMark1 }}</text>
           </view>
           <view class="item-name">{{ plan.itemName1 }}</view>
         </view>
-        <view v-if="plan.itemName2" class="item-cell">
+        <view v-if="plan.itemName2" class="item-cell" @tap="openItem(plan.itemId2)">
           <view class="item-icon">
             <image class="icon" :class="{ reward: plan.itemPrize2 }" :src="plan.itemIcon2" mode="aspectFill" />
             <text class="num" :class="{ prize: plan.itemPrize2 }">{{ plan.itemMark2 }}</text>
           </view>
           <view class="item-name">{{ plan.itemName2 }}</view>
         </view>
-        <view v-if="plan.itemName3" class="item-cell">
+        <view v-if="plan.itemName3" class="item-cell" @tap="openItem(plan.itemId3)">
           <view class="item-icon">
             <image class="icon" :class="{ reward: plan.itemPrize3 }" :src="plan.itemIcon3" mode="aspectFill" />
             <text class="num" :class="{ prize: plan.itemPrize3 }">{{ plan.itemMark3 }}</text>
           </view>
           <view class="item-name">{{ plan.itemName3 }}</view>
         </view>
-        <view v-if="plan.itemName4" class="item-cell">
+        <view v-if="plan.itemName4" class="item-cell" @tap="openItem(plan.itemId4)">
           <view class="item-icon">
             <image class="icon" :class="{ reward: plan.itemPrize4 }" :src="plan.itemIcon4" mode="aspectFill" />
             <text class="num" :class="{ prize: plan.itemPrize4 }">{{ plan.itemMark4 }}</text>
           </view>
           <view class="item-name">{{ plan.itemName4 }}</view>
         </view>
-        <view v-if="plan.itemName5" class="item-cell">
+        <view v-if="plan.itemName5" class="item-cell" @tap="openItem(plan.itemId5)">
           <view class="item-icon">
             <image class="icon" :class="{ reward: plan.itemPrize5 }" :src="plan.itemIcon5" mode="aspectFill" />
             <text class="num" :class="{ prize: plan.itemPrize5 }">{{ plan.itemMark5 }}</text>
           </view>
           <view class="item-name">{{ plan.itemName5 }}</view>
         </view>
-        <view v-if="plan.itemName6" class="item-cell">
+        <view v-if="plan.itemName6" class="item-cell" @tap="openItem(plan.itemId6)">
           <view class="item-icon">
             <image class="icon" :class="{ reward: plan.itemPrize6 }" :src="plan.itemIcon6" mode="aspectFill" />
             <text class="num" :class="{ prize: plan.itemPrize6 }">{{ plan.itemMark6 }}</text>
@@ -113,7 +113,19 @@
 import { ref, computed } from "vue"
 import { onLoad } from "@dcloudio/uni-app"
 import catalog from "../../../data/catalog.js"
-import gatedItems from "../../common/gated-items.js"
+import details from "../../../data/augments.js"
+
+const augmentIds = {}
+Object.keys(details).forEach((id) => {
+  augmentIds[details[id].name] = id
+})
+
+const gatedItems = {
+  金铲铲: "海牛阿福的勇士",
+  终极九头蛇: "终极九头蛇",
+  虚空献祭: "艾卡西亚的陷落",
+  沃格勒特的巫师帽: "沃格勒特的巫师帽"
+}
 
 const missing = ref(false)
 const champion = ref({
@@ -168,12 +180,39 @@ function buildPlans(augments, items) {
       backupName2: backups[1] ? backups[1].name : ""
     }
     gear.forEach((item, index) => {
+      plan["itemId" + index] = itemId(item.icon)
       plan["itemIcon" + index] = item.icon
       plan["itemName" + index] = item.name
       plan["itemMark" + index] = item.reward ? "奖" : String(item.order)
       plan["itemPrize" + index] = !!item.reward
     })
     return plan
+  })
+}
+
+function openAugment(name) {
+  const id = augmentIds[name]
+  if (!id) {
+    uni.showToast({ title: "这个海克斯暂无详情", icon: "none" })
+    return
+  }
+  uni.navigateTo({
+    url: "/pages/augment/augment?id=" + id
+  })
+}
+
+function itemId(icon) {
+  const match = String(icon || "").match(/\/item\/(\d+)\.png/)
+  return match ? match[1] : ""
+}
+
+function openItem(id) {
+  if (!id) {
+    uni.showToast({ title: "这件装备暂无详情", icon: "none" })
+    return
+  }
+  uni.navigateTo({
+    url: "/pages/item/item?id=" + id
   })
 }
 

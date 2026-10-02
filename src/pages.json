@@ -18,6 +18,28 @@
           }
         }
       ]
+    },
+    {
+      "root": "pages/augment",
+      "pages": [
+        {
+          "path": "augment",
+          "style": {
+            "navigationBarTitleText": "海克斯详情"
+          }
+        }
+      ]
+    },
+    {
+      "root": "pages/item",
+      "pages": [
+        {
+          "path": "item",
+          "style": {
+            "navigationBarTitleText": "装备详情"
+          }
+        }
+      ]
     }
   ],
   "globalStyle": {
