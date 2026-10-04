@@ -17,9 +17,15 @@
       <view class="badge" :class="champion.grade">{{ champion.grade }}</view>
     </view>
 
-    <view class="section">构建方案</view>
+    <view class="seg">
+      <view class="seg-item" :class="{ on: tab === 'plan' }" @tap="tab = 'plan'">构建方案</view>
+      <view class="seg-item" :class="{ on: tab === 'hex' }" @tap="tab = 'hex'">推荐海克斯</view>
+      <view class="seg-item" :class="{ on: tab === 'gear' }" @tap="tab = 'gear'">推荐装备</view>
+    </view>
+
+    <view :class="{ off: tab !== 'plan' }">
     <view v-if="plans.length === 0" class="hint">这个英雄暂时没有海克斯和出装样本。</view>
-    <view v-else class="hint">每套方案先放核心海克斯和备选。能直接购买的装备按出场次数排列，需要对应海克斯才能拿到的装备写在那一套最前面。</view>
+    <view v-else class="hint">每套方案的装备是拿到这个海克斯的对局里出场最多的，标奖的装备只有拿到对应海克斯才会出现。</view>
     <view v-for="plan in plans" :key="plan.name" class="plan">
       <view class="plan-head">
         <view class="badge" :class="plan.grade">{{ plan.grade }}</view>
@@ -106,19 +112,44 @@
         </view>
       </view>
     </view>
+    </view>
+
+    <view :class="{ off: tab !== 'hex' }">
+      <view class="hint">按搭配胜率排列，是这个英雄拿到该海克斯后的胜率。</view>
+      <view v-if="hexes.length === 0" class="empty">暂时没有海克斯样本</view>
+      <view v-for="(item, index) in hexes" :key="item.name" class="list-row" @tap="openAugment(item.name)">
+        <view class="order">{{ index + 1 }}</view>
+        <image class="list-icon hex-frame" :class="'r' + item.rarity" :src="item.icon" mode="aspectFill" lazy-load />
+        <view class="list-copy">
+          <view class="list-name">{{ item.name }}</view>
+          <view class="meta">搭配胜率 {{ item.winRate }}% · 样本 {{ formatGames(item.games) }}</view>
+        </view>
+        <view class="badge sm" :class="item.grade">{{ item.grade }}</view>
+      </view>
+    </view>
+
+    <view :class="{ off: tab !== 'gear' }">
+      <view class="hint">按胜率排列，胜率是这个英雄出这件装备时的胜率。</view>
+      <view v-if="gears.length === 0" class="empty">暂时没有出装样本</view>
+      <view v-for="(item, index) in gears" :key="item.id" class="list-row" @tap="openItem(item.id)">
+        <view class="order">{{ index + 1 }}</view>
+        <image class="list-icon" :src="item.icon" mode="aspectFill" lazy-load />
+        <view class="list-copy">
+          <view class="list-name">{{ item.name }}</view>
+          <view class="meta">胜率 {{ item.winRate }}% · 样本 {{ formatGames(item.games) }}</view>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
 <script setup>
 import { ref, computed } from "vue"
 import { onLoad } from "@dcloudio/uni-app"
-import catalog from "../../../data/catalog.js"
-import details from "../../../data/augments.js"
-
-const augmentIds = {}
-Object.keys(details).forEach((id) => {
-  augmentIds[details[id].name] = id
-})
+import catalog from "./catalog.js"
+import gear from "./gear.js"
+import matchups from "./matchups.js"
+import augmentIds from "./augment-ids.js"
 
 const gatedItems = {
   金铲铲: "海牛阿福的勇士",
@@ -128,6 +159,7 @@ const gatedItems = {
 }
 
 const missing = ref(false)
+const tab = ref("plan")
 const champion = ref({
   name: "",
   title: "",
@@ -139,6 +171,8 @@ const champion = ref({
   icon: ""
 })
 const plans = ref([])
+const hexes = ref([])
+const gears = ref([])
 
 const gamesText = computed(() => formatGames(champion.value.games))
 
@@ -151,22 +185,16 @@ function grantsItem(hexName, itemName) {
   return !!required && hexName.indexOf(required) >= 0
 }
 
-function shopItems(items) {
-  return items
-    .filter((item) => !gatedItems[item.name])
-    .slice()
-    .sort((a, b) => b.games - a.games || b.winRate - a.winRate)
-    .slice(0, 6)
-}
-
-function buildPlans(augments, items) {
-  const common = shopItems(items)
+function buildPlans(augments, items, key) {
+  const byAugment = matchups[key] || {}
   return augments.map((hex) => {
     const reward = items
       .filter((item) => grantsItem(hex.name, item.name))
       .map((item) => ({ ...item, reward: true }))
+    const matched = (byAugment[augmentIds[hex.name]] || [])
+      .filter((item) => !gatedItems[item.name] && !reward.some((prize) => prize.name === item.name))
     const backups = augments.filter((item) => item.name !== hex.name).slice(0, 2)
-    const numbered = common.map((item, index) => ({ ...item, order: index + 1 }))
+    const numbered = matched.map((item, index) => ({ ...item, order: index + 1 }))
     const gear = reward.concat(numbered).slice(0, 7)
     const plan = {
       name: hex.name,
@@ -237,7 +265,10 @@ onLoad((query) => {
     grade: found.grade,
     icon: found.icon
   }
-  plans.value = buildPlans(found.augments || [], found.items || [])
+  const augments = found.augments || []
+  plans.value = buildPlans(augments, found.items || [], key)
+  hexes.value = augments
+  gears.value = gear[key] || []
 })
 </script>
 
@@ -305,12 +336,6 @@ onLoad((query) => {
 
 .meta {
   margin-top: 4rpx;
-}
-
-.section {
-  margin: 32rpx 0 12rpx;
-  font-size: 32rpx;
-  font-weight: 700;
 }
 
 .plan,
@@ -420,5 +445,13 @@ onLoad((query) => {
 .num.prize {
   background: #e0b15a;
   color: #1a1408;
+}
+
+.order {
+  width: 40rpx;
+  text-align: center;
+  color: #c8a15a;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 </style>

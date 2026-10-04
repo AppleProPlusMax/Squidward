@@ -94,8 +94,8 @@
 <script setup>
 import { computed, ref } from "vue"
 import { onLoad } from "@dcloudio/uni-app"
-import details from "../../../data/augments.js"
-import gallery from "../../../data/gallery.js"
+import details from "./augments.js"
+import gallery from "../../common/gallery.js"
 import { rarityLabel } from "../../common/meta.js"
 
 const missing = ref(false)

@@ -3,8 +3,9 @@ const path = require("path")
 const { execFileSync } = require("child_process")
 
 const ROOT = path.join(__dirname, "..")
-const CATALOG = path.join(ROOT, "data", "catalog.js")
-const OUT = path.join(ROOT, "data", "augments.js")
+const CATALOG = path.join(ROOT, "src", "pages", "champion", "catalog.js")
+const OUT = path.join(ROOT, "src", "pages", "augment", "augments.js")
+const IDS = path.join(ROOT, "src", "pages", "champion", "augment-ids.js")
 
 const GATED = {
   金铲铲: "海牛阿福的勇士",
@@ -175,6 +176,11 @@ function main() {
     process.exit(1)
   }
   fs.writeFileSync(OUT, "export default " + JSON.stringify(out) + ";\n")
+  const ids = {}
+  Object.keys(out).forEach((id) => {
+    ids[out[id].name] = id
+  })
+  fs.writeFileSync(IDS, "export default " + JSON.stringify(ids) + ";\n")
   console.log("wrote", total, "augments", fs.statSync(OUT).size, "bytes")
 }
 

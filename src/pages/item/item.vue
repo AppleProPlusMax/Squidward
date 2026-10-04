@@ -108,8 +108,8 @@
 <script setup>
 import { computed, ref } from "vue"
 import { onLoad } from "@dcloudio/uni-app"
-import details from "../../../data/items.js"
-import gallery from "../../../data/gallery.js"
+import details from "./items.js"
+import gallery from "../../common/gallery.js"
 
 const missing = ref(false)
 const tab = ref("info")

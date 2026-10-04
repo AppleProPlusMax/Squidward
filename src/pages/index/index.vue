@@ -74,7 +74,7 @@
 
 <script setup>
 import { ref } from "vue"
-import gallery from "../../../data/gallery.js"
+import gallery from "../../common/gallery.js"
 import championSearch from "../../common/champion-index.js"
 import { tierLabel } from "../../common/meta.js"
 

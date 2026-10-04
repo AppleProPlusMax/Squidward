@@ -3,7 +3,7 @@ const path = require("path")
 const { pinyin } = require("pinyin-pro")
 const aliases = require("./champion-aliases")
 
-const CATALOG = path.join(__dirname, "..", "data", "catalog.js")
+const CATALOG = path.join(__dirname, "..", "src", "pages", "champion", "catalog.js")
 const OUT = path.join(__dirname, "..", "src", "common", "champion-index.js")
 
 function readCatalog() {

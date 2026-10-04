@@ -4,7 +4,7 @@ const { execFileSync } = require("child_process")
 const { pickItemIcons } = require("./item-icons")
 
 const ROOT = path.join(__dirname, "..")
-const CATALOG = path.join(ROOT, "data", "catalog.js")
+const CATALOG = path.join(ROOT, "src", "pages", "champion", "catalog.js")
 const PATCH = "16.19.1"
 
 function get(url) {
@@ -334,7 +334,7 @@ function writeGallery(catalog) {
       rarity: item.rarity || 0
     }))
   }
-  fs.writeFileSync(path.join(ROOT, "data", "gallery.js"), "export default " + JSON.stringify(gallery) + ";\n")
+  fs.writeFileSync(path.join(ROOT, "src", "common", "gallery.js"), "export default " + JSON.stringify(gallery) + ";\n")
 }
 
 main()

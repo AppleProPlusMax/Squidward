@@ -3,8 +3,8 @@ const path = require("path")
 const { execFileSync } = require("child_process")
 
 const ROOT = path.join(__dirname, "..")
-const CATALOG = path.join(ROOT, "data", "catalog.js")
-const OUT = path.join(ROOT, "data", "items.js")
+const CATALOG = path.join(ROOT, "src", "pages", "champion", "catalog.js")
+const OUT = path.join(ROOT, "src", "pages", "item", "items.js")
 const CACHE = path.join(ROOT, "data", ".item-pages.json")
 const GAP = 3
 const HERO_LIMIT = 12

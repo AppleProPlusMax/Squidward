@@ -2,7 +2,7 @@ const fs = require("fs")
 const path = require("path")
 const { execFileSync } = require("child_process")
 
-const CATALOG = path.join(__dirname, "..", "data", "catalog.js")
+const CATALOG = path.join(__dirname, "..", "src", "pages", "champion", "catalog.js")
 const ITEM_META = "https://lol-api-champion.op.gg/api/meta/items?hl=zh_CN"
 
 function onAram(entry) {
