@@ -16,7 +16,7 @@ const MIN_GEAR_GAMES = 20000
 const MIN_PLAN_GAMES = 1000
 
 function get(url) {
-  return execFileSync("curl.exe", ["-sL", "--compressed", "-A", "Mozilla/5.0", "--max-time", "60", url], {
+  return execFileSync("curl.exe", ["-sL", "-A", "Mozilla/5.0", "--max-time", "60", url], {
     maxBuffer: 40 * 1024 * 1024
   }).toString("utf8")
 }

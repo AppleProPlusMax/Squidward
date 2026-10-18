@@ -12,6 +12,7 @@ node_modules
 dist
 *.local
 project.private.config.json
+data/
 
 # Editor directories and files
 .idea

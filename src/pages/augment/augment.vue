@@ -83,7 +83,7 @@
         <image class="list-icon" :src="item.icon" mode="aspectFill" lazy-load />
         <view class="list-copy">
           <view class="list-name">{{ item.title }}</view>
-          <view class="meta">搭配胜率 {{ item.winRate }}% · HexScore {{ item.score }} · 样本 {{ item.gamesText }}</view>
+          <view class="meta">搭配胜率 {{ item.winRate }}%<text v-if="item.score"> · HexScore {{ item.score }}</text> · 样本 {{ item.gamesText }}</view>
         </view>
         <view class="badge sm" :class="item.grade">{{ item.grade }}</view>
       </view>

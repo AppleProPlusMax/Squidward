@@ -5,12 +5,12 @@ const { pickItemIcons } = require("./item-icons")
 
 const ROOT = path.join(__dirname, "..")
 const CATALOG = path.join(ROOT, "src", "pages", "champion", "catalog.js")
-const PATCH = "16.19.1"
+const PATCH = "16.20.1"
 
 function get(url) {
   return execFileSync(
     "curl.exe",
-    ["-sL", "--compressed", "-A", "Mozilla/5.0", "--max-time", "40", url],
+    ["-sL", "-A", "Mozilla/5.0", "--max-time", "40", url],
     { maxBuffer: 20 * 1024 * 1024 }
   ).toString("utf8")
 }
@@ -164,71 +164,178 @@ function main() {
   ).data
   const tags = {}
   const spoken = {}
+  const given = {}
   Object.keys(championsJson).forEach((id) => {
     const row = championsJson[id]
     const key = id.toLowerCase()
     tags[key] = row.tags || []
     spoken[key] = row.title
-    championIcon[key] = championIcon[key] || "https://ddragon.leagueoflegends.com/cdn/" + PATCH + "/img/champion/" + id + ".png"
+    given[key] = row.name
+    championIcon[key] = "https://ddragon.leagueoflegends.com/cdn/" + PATCH + "/img/champion/" + id + ".png"
   })
 
+  const itemName = {}
+  itemMeta.forEach((entry) => {
+    if (entry.id != null && entry.name) itemName[String(entry.id)] = entry.name
+  })
+  const ddItems = JSON.parse(
+    get("https://ddragon.leagueoflegends.com/cdn/" + PATCH + "/data/zh_CN/item.json")
+  ).data
+  Object.keys(ddItems).forEach((id) => {
+    if (!itemName[id] && ddItems[id].name) itemName[id] = ddItems[id].name
+  })
+
+  console.log("fetch augment list")
+  const augmentHtml = get("https://hexdata.com.cn/augments")
+  const augmentWait = Number((augmentHtml.match(/"retryAfterSeconds"\s*:\s*(\d+)/) || [])[1] || 0)
+  if (augmentWait) {
+    console.error("augment list rate limited, retry after", augmentWait, "seconds")
+    process.exit(1)
+  }
+  const augmentRows = parseRows(augmentHtml)
+  const augments = []
+  const augmentName = {}
+  augmentRows.forEach((row) => {
+    const link = cellLink(row)
+    if (!link || link.href.indexOf("/augment/") !== 0) return
+    const cells = cellText(row)
+    const id = Number(link.href.split("/").pop().split("-")[0])
+    const summary = cells[1] || ""
+    augmentName[String(id)] = link.text
+    augments.push({
+      id,
+      name: link.text,
+      score: Number((summary.match(/综合评分\s*([\d.]+)/) || [])[1]) || 0,
+      winRate: percent((summary.match(/胜率\s*[\d.]+%/) || [""])[0]),
+      rarity: rarityOf(link.text),
+      icon: iconOf(link.text)
+    })
+  })
+  augments.sort((a, b) => b.winRate - a.winRate)
+  augments.forEach((item, index) => {
+    item.rank = index + 1
+    item.grade = grade(item.winRate)
+  })
+  console.log("augments", augments.length, augments[0] && augments[0].name, augments[0] && augments[0].winRate)
+
   console.log("fetch hero list")
-  const listed = parseHeroList(get("https://hexdata.com.cn/heroes"))
+  const heroHtml = get("https://hexdata.com.cn/heroes")
+  const heroWait = Number((heroHtml.match(/"retryAfterSeconds"\s*:\s*(\d+)/) || [])[1] || 0)
+  if (heroWait) {
+    console.error("hero list rate limited, retry after", heroWait, "seconds")
+    process.exit(1)
+  }
+  const listed = parseHeroList(heroHtml)
   console.log("heroes", listed.length)
   if (listed.length < 150) {
     console.error("hero list too short")
     process.exit(1)
   }
 
+  const cacheDir = path.join(ROOT, "data", ".matchup-pages")
+  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true })
+  const gatedNames = {
+    金铲铲: true,
+    终极九头蛇: true,
+    虚空献祭: true,
+    沃格勒特的巫师帽: true
+  }
   const details = []
   const failed = []
   let done = 0
+  let stopped = false
   listed.forEach((hero) => {
-    let html = ""
+    if (stopped) return
+    const file = path.join(cacheDir, hero.id + ".json")
+    let page = null
     try {
-      html = getPage("https://hexdata.com.cn/hero/" + hero.slug)
-      sleep(2)
-      const tables = parseStatTable(html)
-      const blurb = parseBlurb(html)
-      const pick = percent((blurb.match(/选取率\s*[\d.]+%/) || [""])[0])
-      const tierMatch = blurb.match(/层级\s*(T\d|OP)/)
-      const augments = (tables[0] || []).slice(0, 8)
-      if (!augments.length) failed.push(hero.key + " empty")
-      details.push({
-        hero,
-        pickRate: pick,
-        tierLabel: tierMatch ? tierMatch[1] : "",
-        augments,
-        items: (tables[1] || []).slice(0, 12)
-      })
+      if (fs.existsSync(file) && fs.statSync(file).size > 1000) {
+        page = JSON.parse(fs.readFileSync(file, "utf8"))
+      } else {
+        const body = get("https://hexdata.com.cn/data/hero-augment-items/" + hero.id + ".json")
+        if (body.indexOf('"itemStats"') < 0) {
+          const wait = Number((body.match(/"retryAfterSeconds"\s*:\s*(\d+)/) || [])[1] || 0)
+          console.log("rate limited", wait, hero.key)
+          stopped = true
+          return
+        }
+        fs.writeFileSync(file, body)
+        page = JSON.parse(body)
+        sleep(1)
+      }
     } catch (err) {
       failed.push(hero.key + " " + err.message)
+      return
     }
+    const augments = (page.augments || [])
+      .map((row) => {
+        const name = augmentName[String(row.augmentId)]
+        if (!name || !row.games) return null
+        return {
+          name,
+          score: 0,
+          winRate: Math.round(row.wins / row.games * 1000) / 10,
+          games: row.games
+        }
+      })
+      .filter(Boolean)
+    const solidAugments = augments.filter((item) => item.games >= 1000)
+    const rankedAugments = (solidAugments.length >= 8 ? solidAugments : augments)
+      .sort((a, b) => b.winRate - a.winRate || b.games - a.games)
+      .slice(0, 8)
+    const namedItems = (page.itemStats || [])
+      .map((row) => {
+        const name = itemName[String(row.itemId)]
+        if (!name || !row.games) return null
+        return {
+          name,
+          score: 0,
+          winRate: Math.round(row.wins / row.games * 1000) / 10,
+          games: row.games
+        }
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.games - a.games)
+    const shop = namedItems.filter((item) => !gatedNames[item.name]).slice(0, 12)
+    const rewards = namedItems.filter((item) => gatedNames[item.name] && !shop.some((entry) => entry.name === item.name))
+    if (!rankedAugments.length) failed.push(hero.key + " empty")
+    details.push({
+      hero,
+      augments: rankedAugments,
+      items: shop.concat(rewards)
+    })
     done += 1
     if (done % 20 === 0) console.log("pages", done)
   })
 
-  if (failed.length) console.log("failed", failed.length, failed.slice(0, 12).join(" | "))
-  const filled = details.filter((row) => row.augments.length && row.pickRate).length
-  if (filled < 150) {
-    console.error("only", filled, "heroes have both a pick rate and augments")
+  if (stopped) {
+    console.error("stopped early, rerun to continue")
     process.exit(1)
   }
+  if (failed.length) console.log("failed", failed.length, failed.slice(0, 12).join(" | "))
+  const filled = details.filter((row) => row.augments.length).length
+  if (filled < 150) {
+    console.error("only", filled, "heroes have augments")
+    process.exit(1)
+  }
+
+  const slotGames = listed.reduce((sum, hero) => sum + hero.games, 0)
 
   const byWin = details.slice().sort((a, b) => b.hero.winRate - a.hero.winRate || b.hero.games - a.hero.games)
   const champions = byWin.map((row, index) => {
     const old = catalog.champions.find((item) => item.key === row.hero.key) || {}
+    const split = String(row.hero.label).match(/^(.+?)（(.+)）$/)
     return {
       id: row.hero.id,
       key: row.hero.key,
-      name: old.name || spoken[row.hero.key] || row.hero.key,
-      title: old.title || row.hero.label,
+      name: (split && split[2]) || old.name || given[row.hero.key] || row.hero.key,
+      title: (split && split[1]) || old.title || spoken[row.hero.key] || row.hero.label,
       tags: tags[row.hero.key] || [],
       winRate: row.hero.winRate,
-      pickRate: row.pickRate,
+      pickRate: slotGames ? Math.round(row.hero.games * 10000 / slotGames) / 10 : 0,
       games: row.hero.games,
       grade: grade(row.hero.winRate),
-      tierLabel: row.tierLabel,
+      tierLabel: "",
       rank: index + 1,
       aliases: require("./champion-aliases")[row.hero.key] || [],
       icon: championIcon[row.hero.key] || old.icon || "",
@@ -267,37 +374,12 @@ function main() {
     return hit ? augmentRarity[hit] : 0
   }
 
-  console.log("fetch augment list")
-  const augmentRows = parseRows(get("https://hexdata.com.cn/augments"))
-  const augments = []
-  augmentRows.forEach((row) => {
-    const link = cellLink(row)
-    if (!link || link.href.indexOf("/augment/") !== 0) return
-    const cells = cellText(row)
-    const id = Number(link.href.split("/").pop().split("-")[0])
-    const summary = cells[1] || ""
-    augments.push({
-      id,
-      name: link.text,
-      score: Number((summary.match(/综合评分\s*([\d.]+)/) || [])[1]) || 0,
-      winRate: percent((summary.match(/胜率\s*[\d.]+%/) || [""])[0]),
-      rarity: rarityOf(link.text),
-      icon: iconOf(link.text)
-    })
-  })
-  augments.sort((a, b) => b.winRate - a.winRate)
-  augments.forEach((item, index) => {
-    item.rank = index + 1
-    item.grade = grade(item.winRate)
-  })
-  console.log("augments", augments.length, augments[0] && augments[0].name, augments[0] && augments[0].winRate)
-
   const next = {
-    patch: "16.19",
+    patch: "16.20",
     source: "Hexdata",
     sourceUrl: "https://hexdata.com.cn/heroes",
-    updatedAt: "2026-09-27",
-    note: "胜率来自 Hexdata 16.19（2026-09-27），按英雄胜率排序。SS≥56%，S≥53%，A≥50%，B≥47%。",
+    updatedAt: "2026-10-12",
+    note: "胜率来自 Hexdata 16.20（2026-10-12），按英雄胜率排序。SS≥56%，S≥53%，A≥50%，B≥47%。",
     augments: augments.filter((item) => item.winRate > 0).slice(0, 80),
     champions
   }

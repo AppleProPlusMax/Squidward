@@ -19,7 +19,7 @@ const GATED = {
 }
 
 function get(url) {
-  return execFileSync("curl.exe", ["-sL", "--compressed", "-A", "Mozilla/5.0", "--max-time", "40", url], {
+  return execFileSync("curl.exe", ["-sL", "-A", "Mozilla/5.0", "--max-time", "40", url], {
     maxBuffer: 50 * 1024 * 1024
   }).toString("utf8")
 }
@@ -183,26 +183,26 @@ function main() {
     })
   })
 
-  const cached = fs.existsSync(CACHE) ? JSON.parse(fs.readFileSync(CACHE, "utf8")) : {}
   const failed = []
   const ids = Object.keys(items)
-  ids.forEach((id, index) => {
-    const base = items[id]
-    const pageId = pageIds[base.name]
-    if (cached[id] || !pageId) return
-    const html = getPage("https://hexdata.com.cn/item/" + pageId)
-    sleep(GAP)
-    if (!html) {
-      failed.push(base.name + " empty " + pageId)
-      return
-    }
-    const page = html.replace(/<script[\s\S]*?<\/script>/g, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ")
-    cached[id] = {
-      summary: (page.match(/：加权胜率[^。]*。/) || [""])[0],
-      heroes: parseHeroes(html)
-    }
-    fs.writeFileSync(CACHE, JSON.stringify(cached))
-    if ((index + 1) % 10 === 0) console.log("pages", index + 1, "/", ids.length)
+  const cacheDir = path.join(ROOT, "data", ".matchup-pages")
+  const heroesByItem = {}
+  catalog.champions.forEach((champ) => {
+    const file = path.join(cacheDir, champ.id + ".json")
+    if (!fs.existsSync(file)) return
+    const page = JSON.parse(fs.readFileSync(file, "utf8"))
+    ;(page.itemStats || []).forEach((row) => {
+      const id = String(row.itemId)
+      if (!items[id] || !row.games) return
+      if (!heroesByItem[id]) heroesByItem[id] = []
+      heroesByItem[id].push({
+        key: champ.key,
+        score: 0,
+        winRate: Math.round(row.wins / row.games * 1000) / 10,
+        pickRate: champ.games ? Math.round(row.games / champ.games * 1000) / 10 : 0,
+        games: row.games
+      })
+    })
   })
 
   const out = {}
@@ -215,8 +215,9 @@ function main() {
       .filter((part) => dd[part])
       .map((part) => ({ name: dd[part].name, icon: ddIcon(part) }))
     const stat = summary[base.name] || {}
-    const page = cached[id]
-    const rows = (page ? page.heroes : []).filter((row) => champions[row.key])
+    const page = heroesByItem[id]
+    const rows = (page || []).filter((row) => champions[row.key])
+    rows.sort((a, b) => b.winRate - a.winRate || b.games - a.games)
     const solid = rows.filter((row) => row.games >= MIN_GAMES)
     const heroes = (solid.length >= MIN_HEROES ? solid : rows)
       .slice(0, HERO_LIMIT)
@@ -254,7 +255,7 @@ function main() {
   })
 
   if (failed.length) console.log("failed", failed.length, failed.join(" | "))
-  const fetched = ids.filter((id) => cached[id]).length
+  const fetched = ids.filter((id) => heroesByItem[id]).length
   fs.writeFileSync(OUT, "export default " + JSON.stringify(out) + ";\n")
   if (fetched < ids.length - 5) {
     console.error("only", fetched, "item pages fetched, rerun to continue")

@@ -15,7 +15,7 @@ const GATED = {
 }
 
 function get(url) {
-  return execFileSync("curl.exe", ["-sL", "--compressed", "-A", "Mozilla/5.0", "--max-time", "40", url], {
+  return execFileSync("curl.exe", ["-sL", "-A", "Mozilla/5.0", "--max-time", "40", url], {
     maxBuffer: 20 * 1024 * 1024
   }).toString("utf8")
 }
@@ -115,39 +115,42 @@ function main() {
     return hit ? descByName[hit] : ""
   }
 
-  const list = get("https://hexdata.com.cn/augments")
-  const slugs = {}
-  const linkRe = /href="\/augment\/((\d+)-[^"]+)"/g
-  let match
-  while ((match = linkRe.exec(list))) slugs[match[2]] = match[1]
+  const cacheDir = path.join(ROOT, "data", ".matchup-pages")
+  const pages = []
+  catalog.champions.forEach((champ) => {
+    const file = path.join(cacheDir, champ.id + ".json")
+    if (!fs.existsSync(file)) return
+    pages.push({ champ, page: JSON.parse(fs.readFileSync(file, "utf8")) })
+  })
+  if (pages.length < catalog.champions.length - 5) {
+    console.error("only", pages.length, "hero json files, run fetch-hexdata.js first")
+    process.exit(1)
+  }
+  const slotGames = catalog.champions.reduce((sum, champ) => sum + (champ.games || 0), 0)
 
   const out = {}
   const failed = []
   catalog.augments.forEach((hex, index) => {
-    const slug = slugs[String(hex.id)]
-    if (!slug) {
-      failed.push(hex.name + " no slug")
-      return
-    }
-    const html = getPage("https://hexdata.com.cn/augment/" + slug)
-    sleep(2)
-    if (!html) {
-      failed.push(hex.name + " empty")
-      return
-    }
-    const meta = (html.match(/<meta name="description" content="([^"]*)"/) || [])[1] || ""
-    const heroes = parseHeroes(html).map((row) => {
-      const champ = champions[row.key] || {}
-      return {
-        key: row.key,
-        title: champ.title || row.title,
+    const heroes = []
+    let games = 0
+    let wins = 0
+    pages.forEach(({ champ, page }) => {
+      const row = (page.augments || []).find((item) => String(item.augmentId) === String(hex.id))
+      if (!row || !row.games) return
+      games += row.games
+      wins += row.wins || 0
+      heroes.push({
+        key: champ.key,
+        title: champ.title,
         icon: champ.icon || "",
-        winRate: row.winRate,
-        score: row.score,
+        winRate: Math.round(row.wins / row.games * 1000) / 10,
+        score: 0,
         games: row.games,
-        grade: grade(row.winRate)
-      }
+        grade: grade(row.wins / row.games * 100)
+      })
     })
+    heroes.sort((a, b) => b.winRate - a.winRate || b.games - a.games)
+    const shown = heroes.filter((item) => item.games >= 1000).slice(0, 12)
     const items = Object.keys(GATED)
       .filter((name) => hex.name.indexOf(GATED[name]) >= 0)
       .map((name) => ({ name, icon: itemIcon[name] || "" }))
@@ -158,13 +161,13 @@ function main() {
       rarity: hex.rarity || 0,
       grade: hex.grade,
       winRate: hex.winRate,
-      pickRate: number((meta.match(/选取率\s*[\d.]+%/) || [""])[0]),
-      score: number((meta.match(/综合评分\s*[\d.]+/) || [""])[0]),
-      games: count((meta.match(/样本\s*[\d,]+/) || [""])[0]),
-      heroCount: number((meta.match(/覆盖\s*\d+\s*位英雄/) || [""])[0]),
+      pickRate: slotGames ? Math.round(games * 10000 / slotGames) / 10 : 0,
+      score: hex.score || 0,
+      games,
+      heroCount: heroes.length,
       desc: descOf(hex.name),
       items,
-      heroes
+      heroes: shown
     }
     if ((index + 1) % 10 === 0) console.log("augments", index + 1)
   })
