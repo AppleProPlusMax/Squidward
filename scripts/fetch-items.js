@@ -1,12 +1,10 @@
 const fs = require("fs")
 const path = require("path")
-const { execFileSync } = require("child_process")
+const hexdata = require("./hexdata-client")
 
 const ROOT = path.join(__dirname, "..")
 const CATALOG = path.join(ROOT, "src", "pages", "champion", "catalog.js")
 const OUT = path.join(ROOT, "src", "pages", "item", "items.js")
-const CACHE = path.join(ROOT, "data", ".item-pages.json")
-const GAP = 3
 const HERO_LIMIT = 12
 const MIN_GAMES = 20000
 const MIN_HEROES = 8
@@ -16,32 +14,6 @@ const GATED = {
   终极九头蛇: "终极九头蛇",
   虚空献祭: "艾卡西亚的陷落",
   沃格勒特的巫师帽: "沃格勒特的巫师帽"
-}
-
-function get(url) {
-  return execFileSync("curl.exe", ["-sL", "-A", "Mozilla/5.0", "--max-time", "40", url], {
-    maxBuffer: 50 * 1024 * 1024
-  }).toString("utf8")
-}
-
-function sleep(seconds) {
-  if (seconds <= 0) return
-  execFileSync("powershell", ["-Command", "Start-Sleep -Seconds " + seconds], { stdio: "ignore" })
-}
-
-// 两次请求都没有英雄表就当作这件装备没有页面；限流时按服务器给的时间等待后重试
-function getPage(url) {
-  let misses = 0
-  for (let attempt = 0; attempt < 6; attempt += 1) {
-    const html = get(url)
-    const limited = html.match(/"retryAfterSeconds"\s*:\s*(\d+)/)
-    if (!limited && html.indexOf("<tbody>") >= 0) return html
-    if (!limited && ++misses >= 2) return ""
-    const wait = limited ? Number(limited[1]) + 1 : 4
-    console.log("wait", wait, url)
-    sleep(wait)
-  }
-  return ""
 }
 
 function readCatalog() {
@@ -136,7 +108,7 @@ function parseSummary(html) {
   return rows
 }
 
-function main() {
+async function main() {
   const catalog = readCatalog()
   const items = {}
   let version = ""
@@ -150,7 +122,7 @@ function main() {
   })
   if (!version) throw new Error("no ddragon version in catalog")
 
-  const dd = JSON.parse(get("https://ddragon.leagueoflegends.com/cdn/" + version + "/data/zh_CN/item.json")).data
+  const dd = (await hexdata.getJson("https://ddragon.leagueoflegends.com/cdn/" + version + "/data/zh_CN/item.json")).data
   const ddByName = {}
   Object.keys(dd).forEach((id) => {
     const name = dd[id].name
@@ -160,13 +132,14 @@ function main() {
     return "https://ddragon.leagueoflegends.com/cdn/" + version + "/img/item/" + id + ".png"
   }
 
-  const summary = parseSummary(get("https://hexdata.com.cn/items"))
+  // 列表页只请求一次，同时用于汇总数据和详情页编号
+  const listHtml = await hexdata.fetchListPage(catalog.patch, "items")
+  const summary = parseSummary(listHtml)
 
   // 详情页按装备名称找 Hexdata 的编号，图标编号是其他模式的副本，对不上页面
   const pageIds = {}
   const linkRe = /<a href="\/item\/(\d+)">([^<]*)<\/a>/g
   let link
-  const listHtml = get("https://hexdata.com.cn/items")
   while ((link = linkRe.exec(listHtml))) pageIds[link[2].trim()] = link[1]
 
   const champions = {}
@@ -185,12 +158,10 @@ function main() {
 
   const failed = []
   const ids = Object.keys(items)
-  const cacheDir = path.join(ROOT, "data", ".matchup-pages")
   const heroesByItem = {}
   catalog.champions.forEach((champ) => {
-    const file = path.join(cacheDir, champ.id + ".json")
-    if (!fs.existsSync(file)) return
-    const page = JSON.parse(fs.readFileSync(file, "utf8"))
+    const page = hexdata.readHeroPage(catalog.patch, champ.id)
+    if (!page) return
     ;(page.itemStats || []).forEach((row) => {
       const id = String(row.itemId)
       if (!items[id] || !row.games) return
@@ -264,4 +235,7 @@ function main() {
   console.log("wrote", Object.keys(out).length, "items", fs.statSync(OUT).size, "bytes")
 }
 
-main()
+main().catch((err) => {
+  console.error(err)
+  process.exit(1)
+})

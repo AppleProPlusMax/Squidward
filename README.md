@@ -14,7 +14,7 @@
 
 ## 数据说明
 
-胜率来自 [Hexdata](https://hexdata.com.cn/heroes)，当前快照为 **16.19**（2026-09-27）。
+胜率来自 [Hexdata](https://hexdata.com.cn/heroes)，当前快照为 **16.20**（2026-10-12）。
 
 评级阈值：SS ≥ 56%，S ≥ 53%，A ≥ 50%，B ≥ 47%，低于 47% 为 C。
 
@@ -45,7 +45,14 @@ node scripts/fetch-matchups.js
 npm run build:mp-weixin
 ```
 
-`fetch-hexdata.js` 会重写英雄目录和首页列表，并重新生成拼音和昵称索引。后面三条分别刷新海克斯详情、装备详情，以及英雄页的推荐装备和方案出装。`fetch-matchups.js` 依赖前两步的结果；中途被限流时再执行一次即可从缓存续跑。
+`fetch-hexdata.js` 会重写英雄目录和首页列表，并重新生成拼音和昵称索引。后面三条分别刷新海克斯详情、装备详情，以及英雄页的推荐装备和方案出装。
+
+抓取逻辑在 `scripts/hexdata-client.js`：
+
+- 版本号读自 Hexdata 的 `ai-summary.json`，Data Dragon 版本取最新，不用手改。
+- 响应按版本缓存在 `data/.hexdata/<版本>/`，每个英雄每个版本只下载一次；之后的脚本直接读缓存。
+- 请求串行、gzip 传输，两次请求至少间隔 2 秒（环境变量 `HEXDATA_GAP` 可调）。被限流时按服务器给的 `retryAfterSeconds` 等待后自动继续，不需要手动重跑。
+- 加 `--refresh` 参数会带 ETag 重新校验缓存，适合同一版本内 Hexdata 更新了数据的情况，没变的文件只返回 304。
 
 ## 技术栈
 

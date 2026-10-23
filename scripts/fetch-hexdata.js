@@ -2,35 +2,11 @@ const fs = require("fs")
 const path = require("path")
 const { execFileSync } = require("child_process")
 const { pickItemIcons } = require("./item-icons")
+const hexdata = require("./hexdata-client")
 
 const ROOT = path.join(__dirname, "..")
 const CATALOG = path.join(ROOT, "src", "pages", "champion", "catalog.js")
-const PATCH = "16.20.1"
-
-function get(url) {
-  return execFileSync(
-    "curl.exe",
-    ["-sL", "-A", "Mozilla/5.0", "--max-time", "40", url],
-    { maxBuffer: 20 * 1024 * 1024 }
-  ).toString("utf8")
-}
-
-function sleep(seconds) {
-  if (seconds <= 0) return
-  execFileSync("powershell", ["-Command", "Start-Sleep -Seconds " + seconds], { stdio: "ignore" })
-}
-
-function getPage(url) {
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    const html = get(url)
-    const limited = html.match(/"retryAfterSeconds"\s*:\s*(\d+)/)
-    if (!limited && html.indexOf("<tbody>") >= 0) return html
-    const wait = limited ? Number(limited[1]) + 1 : 4
-    console.log("wait", wait, url)
-    sleep(wait)
-  }
-  return ""
-}
+let PATCH = ""
 
 function readCatalog() {
   const raw = fs.readFileSync(CATALOG, "utf8").replace(/^export default\s+/, "").replace(/;\s*$/, "")
@@ -127,7 +103,10 @@ function parseStatTable(html) {
   )
 }
 
-function main() {
+async function main() {
+  const report = await hexdata.getReport()
+  PATCH = await hexdata.latestDdragon()
+  console.log("hexdata patch", report.patch, "date", report.date, "ddragon", PATCH)
   const catalog = readCatalog()
   const championIcon = {}
   const augmentIcon = {}
@@ -147,9 +126,9 @@ function main() {
     if (item.name && item.icon) augmentIcon[item.name] = item.icon
   })
 
-  const itemMeta = JSON.parse(get("https://lol-api-champion.op.gg/api/meta/items?hl=zh_CN")).data
+  const itemMeta = (await hexdata.getJson("https://lol-api-champion.op.gg/api/meta/items?hl=zh_CN")).data
   Object.assign(itemIcon, pickItemIcons(itemMeta))
-  const augmentMeta = JSON.parse(get("https://lol-api-champion.op.gg/api/meta/aram-augments?hl=zh_CN")).data
+  const augmentMeta = (await hexdata.getJson("https://lol-api-champion.op.gg/api/meta/aram-augments?hl=zh_CN")).data
   const augmentRarity = {}
   augmentMeta.forEach((item) => {
     if (!item.name) return
@@ -159,8 +138,8 @@ function main() {
     augmentIcon[item.name] = url
   })
 
-  const championsJson = JSON.parse(
-    get("https://ddragon.leagueoflegends.com/cdn/" + PATCH + "/data/zh_CN/champion.json")
+  const championsJson = (
+    await hexdata.getJson("https://ddragon.leagueoflegends.com/cdn/" + PATCH + "/data/zh_CN/champion.json")
   ).data
   const tags = {}
   const spoken = {}
@@ -178,20 +157,15 @@ function main() {
   itemMeta.forEach((entry) => {
     if (entry.id != null && entry.name) itemName[String(entry.id)] = entry.name
   })
-  const ddItems = JSON.parse(
-    get("https://ddragon.leagueoflegends.com/cdn/" + PATCH + "/data/zh_CN/item.json")
+  const ddItems = (
+    await hexdata.getJson("https://ddragon.leagueoflegends.com/cdn/" + PATCH + "/data/zh_CN/item.json")
   ).data
   Object.keys(ddItems).forEach((id) => {
     if (!itemName[id] && ddItems[id].name) itemName[id] = ddItems[id].name
   })
 
   console.log("fetch augment list")
-  const augmentHtml = get("https://hexdata.com.cn/augments")
-  const augmentWait = Number((augmentHtml.match(/"retryAfterSeconds"\s*:\s*(\d+)/) || [])[1] || 0)
-  if (augmentWait) {
-    console.error("augment list rate limited, retry after", augmentWait, "seconds")
-    process.exit(1)
-  }
+  const augmentHtml = await hexdata.fetchListPage(report.patch, "augments")
   const augmentRows = parseRows(augmentHtml)
   const augments = []
   const augmentName = {}
@@ -219,12 +193,7 @@ function main() {
   console.log("augments", augments.length, augments[0] && augments[0].name, augments[0] && augments[0].winRate)
 
   console.log("fetch hero list")
-  const heroHtml = get("https://hexdata.com.cn/heroes")
-  const heroWait = Number((heroHtml.match(/"retryAfterSeconds"\s*:\s*(\d+)/) || [])[1] || 0)
-  if (heroWait) {
-    console.error("hero list rate limited, retry after", heroWait, "seconds")
-    process.exit(1)
-  }
+  const heroHtml = await hexdata.fetchListPage(report.patch, "heroes")
   const listed = parseHeroList(heroHtml)
   console.log("heroes", listed.length)
   if (listed.length < 150) {
@@ -232,8 +201,8 @@ function main() {
     process.exit(1)
   }
 
-  const cacheDir = path.join(ROOT, "data", ".matchup-pages")
-  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true })
+  await hexdata.ensureHeroPages(report.patch, listed.map((hero) => hero.id))
+
   const gatedNames = {
     金铲铲: true,
     终极九头蛇: true,
@@ -243,28 +212,10 @@ function main() {
   const details = []
   const failed = []
   let done = 0
-  let stopped = false
   listed.forEach((hero) => {
-    if (stopped) return
-    const file = path.join(cacheDir, hero.id + ".json")
-    let page = null
-    try {
-      if (fs.existsSync(file) && fs.statSync(file).size > 1000) {
-        page = JSON.parse(fs.readFileSync(file, "utf8"))
-      } else {
-        const body = get("https://hexdata.com.cn/data/hero-augment-items/" + hero.id + ".json")
-        if (body.indexOf('"itemStats"') < 0) {
-          const wait = Number((body.match(/"retryAfterSeconds"\s*:\s*(\d+)/) || [])[1] || 0)
-          console.log("rate limited", wait, hero.key)
-          stopped = true
-          return
-        }
-        fs.writeFileSync(file, body)
-        page = JSON.parse(body)
-        sleep(1)
-      }
-    } catch (err) {
-      failed.push(hero.key + " " + err.message)
+    const page = hexdata.readHeroPage(report.patch, hero.id)
+    if (!page) {
+      failed.push(hero.key + " missing")
       return
     }
     const augments = (page.augments || [])
@@ -308,10 +259,6 @@ function main() {
     if (done % 20 === 0) console.log("pages", done)
   })
 
-  if (stopped) {
-    console.error("stopped early, rerun to continue")
-    process.exit(1)
-  }
   if (failed.length) console.log("failed", failed.length, failed.slice(0, 12).join(" | "))
   const filled = details.filter((row) => row.augments.length).length
   if (filled < 150) {
@@ -375,11 +322,11 @@ function main() {
   }
 
   const next = {
-    patch: "16.20",
+    patch: report.patch,
     source: "Hexdata",
     sourceUrl: "https://hexdata.com.cn/heroes",
-    updatedAt: "2026-10-12",
-    note: "胜率来自 Hexdata 16.20（2026-10-12），按英雄胜率排序。SS≥56%，S≥53%，A≥50%，B≥47%。",
+    updatedAt: report.date,
+    note: "胜率来自 Hexdata " + report.patch + "（" + report.date + "），按英雄胜率排序。SS≥56%，S≥53%，A≥50%，B≥47%。",
     augments: augments.filter((item) => item.winRate > 0).slice(0, 80),
     champions
   }
@@ -419,4 +366,7 @@ function writeGallery(catalog) {
   fs.writeFileSync(path.join(ROOT, "src", "common", "gallery.js"), "export default " + JSON.stringify(gallery) + ";\n")
 }
 
-main()
+main().catch((err) => {
+  console.error(err)
+  process.exit(1)
+})

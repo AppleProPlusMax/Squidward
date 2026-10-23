@@ -1,6 +1,6 @@
 const fs = require("fs")
 const path = require("path")
-const { execFileSync } = require("child_process")
+const hexdata = require("./hexdata-client")
 
 const ROOT = path.join(__dirname, "..")
 const CATALOG = path.join(ROOT, "src", "pages", "champion", "catalog.js")
@@ -12,29 +12,6 @@ const GATED = {
   终极九头蛇: "终极九头蛇",
   虚空献祭: "艾卡西亚的陷落",
   沃格勒特的巫师帽: "沃格勒特的巫师帽"
-}
-
-function get(url) {
-  return execFileSync("curl.exe", ["-sL", "-A", "Mozilla/5.0", "--max-time", "40", url], {
-    maxBuffer: 20 * 1024 * 1024
-  }).toString("utf8")
-}
-
-function sleep(seconds) {
-  if (seconds <= 0) return
-  execFileSync("powershell", ["-Command", "Start-Sleep -Seconds " + seconds], { stdio: "ignore" })
-}
-
-function getPage(url) {
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    const html = get(url)
-    const limited = html.match(/"retryAfterSeconds"\s*:\s*(\d+)/)
-    if (!limited && html.indexOf("<tbody>") >= 0) return html
-    const wait = limited ? Number(limited[1]) + 1 : 4
-    console.log("wait", wait, url)
-    sleep(wait)
-  }
-  return ""
 }
 
 function readCatalog() {
@@ -91,7 +68,7 @@ function parseHeroes(html) {
   return rows
 }
 
-function main() {
+async function main() {
   const catalog = readCatalog()
   const champions = {}
   const itemIcon = {}
@@ -102,7 +79,7 @@ function main() {
     })
   })
 
-  const opgg = JSON.parse(get("https://lol-api-champion.op.gg/api/meta/aram-augments?hl=zh_CN")).data
+  const opgg = (await hexdata.getJson("https://lol-api-champion.op.gg/api/meta/aram-augments?hl=zh_CN")).data
   const descByName = {}
   opgg.forEach((item) => {
     if (item.name) descByName[item.name] = cleanDesc(item.desc || item.tooltip)
@@ -115,12 +92,10 @@ function main() {
     return hit ? descByName[hit] : ""
   }
 
-  const cacheDir = path.join(ROOT, "data", ".matchup-pages")
   const pages = []
   catalog.champions.forEach((champ) => {
-    const file = path.join(cacheDir, champ.id + ".json")
-    if (!fs.existsSync(file)) return
-    pages.push({ champ, page: JSON.parse(fs.readFileSync(file, "utf8")) })
+    const page = hexdata.readHeroPage(catalog.patch, champ.id)
+    if (page) pages.push({ champ, page })
   })
   if (pages.length < catalog.champions.length - 5) {
     console.error("only", pages.length, "hero json files, run fetch-hexdata.js first")
@@ -187,4 +162,7 @@ function main() {
   console.log("wrote", total, "augments", fs.statSync(OUT).size, "bytes")
 }
 
-main()
+main().catch((err) => {
+  console.error(err)
+  process.exit(1)
+})
