@@ -24,94 +24,94 @@
     </view>
 
     <view :class="{ off: tab !== 'plan' }">
-    <view v-if="plans.length === 0" class="hint">这个英雄暂时没有海克斯和出装样本。</view>
-    <view v-else class="hint">每套方案的装备是拿到这个海克斯的对局里出场最多的，标奖的装备只有拿到对应海克斯才会出现。</view>
-    <view v-for="plan in plans" :key="plan.name" class="plan">
-      <view class="plan-head">
-        <view class="badge" :class="plan.grade">{{ plan.grade }}</view>
-        <view class="plan-copy">
-          <view class="plan-name">{{ plan.name }}</view>
-          <view class="meta">搭配胜率 {{ plan.winRate }}% · 样本 {{ formatGames(plan.games) }}</view>
+      <view v-if="plans.length === 0" class="hint">这个英雄暂时没有海克斯和出装样本。</view>
+      <view v-else class="hint">每套方案的装备是拿到这个海克斯的对局里出场最多的，标奖的装备只有拿到对应海克斯才会出现。</view>
+      <view v-for="plan in plans" :key="plan.name" class="plan">
+        <view class="plan-head">
+          <view class="badge" :class="plan.grade">{{ plan.grade }}</view>
+          <view class="plan-copy">
+            <view class="plan-name">{{ plan.name }}</view>
+            <view class="meta">搭配胜率 {{ plan.winRate }}% · 样本 {{ formatGames(plan.games) }}</view>
+          </view>
+        </view>
+        <view class="hex-row">
+          <view class="hex-group">
+            <view class="role-tag">
+              <text>核</text>
+              <text>心</text>
+            </view>
+            <view class="hex-cell" @tap="openAugment(plan.name)">
+              <image class="icon hex-frame" :class="'r' + plan.rarity" :src="plan.icon" mode="aspectFill" lazy-load />
+              <view class="hex-name">{{ plan.name }}</view>
+            </view>
+          </view>
+          <view v-if="plan.backupName1" class="hex-group">
+            <view class="role-tag">
+              <text>备</text>
+              <text>选</text>
+            </view>
+            <view class="hex-cell" @tap="openAugment(plan.backupName1)">
+              <image class="icon hex-frame" :class="'r' + plan.backupRarity1" :src="plan.backupIcon1" mode="aspectFill" lazy-load />
+              <view class="hex-name">{{ plan.backupName1 }}</view>
+            </view>
+            <view v-if="plan.backupName2" class="hex-cell" @tap="openAugment(plan.backupName2)">
+              <image class="icon hex-frame" :class="'r' + plan.backupRarity2" :src="plan.backupIcon2" mode="aspectFill" lazy-load />
+              <view class="hex-name">{{ plan.backupName2 }}</view>
+            </view>
+          </view>
+        </view>
+        <view class="gear">
+          <view v-if="plan.itemName0" class="item-cell" @tap="openItem(plan.itemId0)">
+            <view class="item-icon">
+              <image class="icon" :class="{ reward: plan.itemPrize0 }" :src="plan.itemIcon0" mode="aspectFill" lazy-load />
+              <text class="num" :class="{ prize: plan.itemPrize0 }">{{ plan.itemMark0 }}</text>
+            </view>
+            <view class="item-name">{{ plan.itemName0 }}</view>
+          </view>
+          <view v-if="plan.itemName1" class="item-cell" @tap="openItem(plan.itemId1)">
+            <view class="item-icon">
+              <image class="icon" :class="{ reward: plan.itemPrize1 }" :src="plan.itemIcon1" mode="aspectFill" lazy-load />
+              <text class="num" :class="{ prize: plan.itemPrize1 }">{{ plan.itemMark1 }}</text>
+            </view>
+            <view class="item-name">{{ plan.itemName1 }}</view>
+          </view>
+          <view v-if="plan.itemName2" class="item-cell" @tap="openItem(plan.itemId2)">
+            <view class="item-icon">
+              <image class="icon" :class="{ reward: plan.itemPrize2 }" :src="plan.itemIcon2" mode="aspectFill" lazy-load />
+              <text class="num" :class="{ prize: plan.itemPrize2 }">{{ plan.itemMark2 }}</text>
+            </view>
+            <view class="item-name">{{ plan.itemName2 }}</view>
+          </view>
+          <view v-if="plan.itemName3" class="item-cell" @tap="openItem(plan.itemId3)">
+            <view class="item-icon">
+              <image class="icon" :class="{ reward: plan.itemPrize3 }" :src="plan.itemIcon3" mode="aspectFill" lazy-load />
+              <text class="num" :class="{ prize: plan.itemPrize3 }">{{ plan.itemMark3 }}</text>
+            </view>
+            <view class="item-name">{{ plan.itemName3 }}</view>
+          </view>
+          <view v-if="plan.itemName4" class="item-cell" @tap="openItem(plan.itemId4)">
+            <view class="item-icon">
+              <image class="icon" :class="{ reward: plan.itemPrize4 }" :src="plan.itemIcon4" mode="aspectFill" lazy-load />
+              <text class="num" :class="{ prize: plan.itemPrize4 }">{{ plan.itemMark4 }}</text>
+            </view>
+            <view class="item-name">{{ plan.itemName4 }}</view>
+          </view>
+          <view v-if="plan.itemName5" class="item-cell" @tap="openItem(plan.itemId5)">
+            <view class="item-icon">
+              <image class="icon" :class="{ reward: plan.itemPrize5 }" :src="plan.itemIcon5" mode="aspectFill" lazy-load />
+              <text class="num" :class="{ prize: plan.itemPrize5 }">{{ plan.itemMark5 }}</text>
+            </view>
+            <view class="item-name">{{ plan.itemName5 }}</view>
+          </view>
+          <view v-if="plan.itemName6" class="item-cell" @tap="openItem(plan.itemId6)">
+            <view class="item-icon">
+              <image class="icon" :class="{ reward: plan.itemPrize6 }" :src="plan.itemIcon6" mode="aspectFill" lazy-load />
+              <text class="num" :class="{ prize: plan.itemPrize6 }">{{ plan.itemMark6 }}</text>
+            </view>
+            <view class="item-name">{{ plan.itemName6 }}</view>
+          </view>
         </view>
       </view>
-      <view class="hex-row">
-        <view class="hex-group">
-          <view class="role-tag">
-            <text>核</text>
-            <text>心</text>
-          </view>
-          <view class="hex-cell" @tap="openAugment(plan.name)">
-            <image class="icon hex-frame" :class="'r' + plan.rarity" :src="plan.icon" mode="aspectFill" lazy-load />
-            <view class="hex-name">{{ plan.name }}</view>
-          </view>
-        </view>
-        <view v-if="plan.backupName1" class="hex-group">
-          <view class="role-tag">
-            <text>备</text>
-            <text>选</text>
-          </view>
-          <view class="hex-cell" @tap="openAugment(plan.backupName1)">
-            <image class="icon hex-frame" :class="'r' + plan.backupRarity1" :src="plan.backupIcon1" mode="aspectFill" lazy-load />
-            <view class="hex-name">{{ plan.backupName1 }}</view>
-          </view>
-          <view v-if="plan.backupName2" class="hex-cell" @tap="openAugment(plan.backupName2)">
-            <image class="icon hex-frame" :class="'r' + plan.backupRarity2" :src="plan.backupIcon2" mode="aspectFill" lazy-load />
-            <view class="hex-name">{{ plan.backupName2 }}</view>
-          </view>
-        </view>
-      </view>
-      <view class="gear">
-        <view v-if="plan.itemName0" class="item-cell" @tap="openItem(plan.itemId0)">
-          <view class="item-icon">
-            <image class="icon" :class="{ reward: plan.itemPrize0 }" :src="plan.itemIcon0" mode="aspectFill" lazy-load />
-            <text class="num" :class="{ prize: plan.itemPrize0 }">{{ plan.itemMark0 }}</text>
-          </view>
-          <view class="item-name">{{ plan.itemName0 }}</view>
-        </view>
-        <view v-if="plan.itemName1" class="item-cell" @tap="openItem(plan.itemId1)">
-          <view class="item-icon">
-            <image class="icon" :class="{ reward: plan.itemPrize1 }" :src="plan.itemIcon1" mode="aspectFill" lazy-load />
-            <text class="num" :class="{ prize: plan.itemPrize1 }">{{ plan.itemMark1 }}</text>
-          </view>
-          <view class="item-name">{{ plan.itemName1 }}</view>
-        </view>
-        <view v-if="plan.itemName2" class="item-cell" @tap="openItem(plan.itemId2)">
-          <view class="item-icon">
-            <image class="icon" :class="{ reward: plan.itemPrize2 }" :src="plan.itemIcon2" mode="aspectFill" lazy-load />
-            <text class="num" :class="{ prize: plan.itemPrize2 }">{{ plan.itemMark2 }}</text>
-          </view>
-          <view class="item-name">{{ plan.itemName2 }}</view>
-        </view>
-        <view v-if="plan.itemName3" class="item-cell" @tap="openItem(plan.itemId3)">
-          <view class="item-icon">
-            <image class="icon" :class="{ reward: plan.itemPrize3 }" :src="plan.itemIcon3" mode="aspectFill" lazy-load />
-            <text class="num" :class="{ prize: plan.itemPrize3 }">{{ plan.itemMark3 }}</text>
-          </view>
-          <view class="item-name">{{ plan.itemName3 }}</view>
-        </view>
-        <view v-if="plan.itemName4" class="item-cell" @tap="openItem(plan.itemId4)">
-          <view class="item-icon">
-            <image class="icon" :class="{ reward: plan.itemPrize4 }" :src="plan.itemIcon4" mode="aspectFill" lazy-load />
-            <text class="num" :class="{ prize: plan.itemPrize4 }">{{ plan.itemMark4 }}</text>
-          </view>
-          <view class="item-name">{{ plan.itemName4 }}</view>
-        </view>
-        <view v-if="plan.itemName5" class="item-cell" @tap="openItem(plan.itemId5)">
-          <view class="item-icon">
-            <image class="icon" :class="{ reward: plan.itemPrize5 }" :src="plan.itemIcon5" mode="aspectFill" lazy-load />
-            <text class="num" :class="{ prize: plan.itemPrize5 }">{{ plan.itemMark5 }}</text>
-          </view>
-          <view class="item-name">{{ plan.itemName5 }}</view>
-        </view>
-        <view v-if="plan.itemName6" class="item-cell" @tap="openItem(plan.itemId6)">
-          <view class="item-icon">
-            <image class="icon" :class="{ reward: plan.itemPrize6 }" :src="plan.itemIcon6" mode="aspectFill" lazy-load />
-            <text class="num" :class="{ prize: plan.itemPrize6 }">{{ plan.itemMark6 }}</text>
-          </view>
-          <view class="item-name">{{ plan.itemName6 }}</view>
-        </view>
-      </view>
-    </view>
     </view>
 
     <view :class="{ off: tab !== 'hex' }">
@@ -129,7 +129,7 @@
     </view>
 
     <view :class="{ off: tab !== 'gear' }">
-      <view class="hint">按胜率排列，胜率是这个英雄出这件装备时的胜率。</view>
+      <view class="hint">按出场数排列，胜率是这个英雄出这件装备时的胜率。</view>
       <view v-if="gears.length === 0" class="empty">暂时没有出装样本</view>
       <view v-for="(item, index) in gears" :key="item.id" class="list-row" @tap="openItem(item.id)">
         <view class="order">{{ index + 1 }}</view>
@@ -157,6 +157,11 @@ const gatedItems = {
   虚空献祭: "艾卡西亚的陷落",
   沃格勒特的巫师帽: "沃格勒特的巫师帽"
 }
+
+const championByKey = Object.create(null)
+catalog.champions.forEach((item) => {
+  championByKey[item.key] = item
+})
 
 const missing = ref(false)
 const tab = ref("plan")
@@ -195,7 +200,7 @@ function buildPlans(augments, items, key) {
       .filter((item) => !gatedItems[item.name] && !reward.some((prize) => prize.name === item.name))
     const backups = augments.filter((item) => item.name !== hex.name).slice(0, 2)
     const numbered = matched.map((item, index) => ({ ...item, order: index + 1 }))
-    const gear = reward.concat(numbered).slice(0, 7)
+    const gearList = reward.concat(numbered).slice(0, 7)
     const plan = {
       name: hex.name,
       icon: hex.icon,
@@ -210,8 +215,8 @@ function buildPlans(augments, items, key) {
       backupName2: backups[1] ? backups[1].name : "",
       backupRarity2: backups[1] ? backups[1].rarity || 0 : 0
     }
-    gear.forEach((item, index) => {
-      plan["itemId" + index] = itemId(item.icon)
+    gearList.forEach((item, index) => {
+      plan["itemId" + index] = item.id || itemId(item.icon)
       plan["itemIcon" + index] = item.icon
       plan["itemName" + index] = item.name
       plan["itemMark" + index] = item.reward ? "奖" : String(item.order)
@@ -249,7 +254,7 @@ function openItem(id) {
 
 onLoad((query) => {
   const key = (query && query.key) || ""
-  const found = catalog.champions.find((item) => item.key === key)
+  const found = championByKey[key]
   if (!found) {
     missing.value = true
     return
@@ -336,6 +341,11 @@ onLoad((query) => {
 
 .meta {
   margin-top: 4rpx;
+}
+
+.hint {
+  margin: 18rpx 0 12rpx;
+  line-height: 1.5;
 }
 
 .plan,

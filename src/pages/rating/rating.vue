@@ -33,7 +33,8 @@
           class="history-chip"
           @tap="selectHistory(item)"
         >
-          {{ item }}
+          <text class="history-chip-text">{{ item }}</text>
+          <text class="history-chip-del" @tap.stop="removeHistory(item)">×</text>
         </view>
       </scroll-view>
     </view>
@@ -68,14 +69,15 @@
         </view>
 
         <view class="rating-grid">
-          <view class="rating-block">
+          <view class="rating-block" :class="profile.ratingType === 1 ? 'estimated' : 'current'">
             <view class="block-label-row">
+              <text class="status-dot" :class="profile.ratingType === 1 ? 'est' : 'cur'"></text>
               <text class="block-label">{{ profile.ratingType === 1 ? "推算隐藏分" : "当前隐藏分" }}</text>
               <text v-if="profile.ratingType === 1" class="estimate-tag">近期推算</text>
             </view>
 
             <view v-if="hasRating" class="rating-val-row">
-              <text class="rating-num">{{ profile.rating }}</text>
+              <text class="rating-num" :class="{ est: profile.ratingType === 1 }">{{ profile.rating }}</text>
               <text v-if="hasMargin" class="rating-err">±{{ profile.marginOfError }}</text>
             </view>
             <view v-else class="rating-empty">暂无隐藏分数据</view>
@@ -87,7 +89,7 @@
 
           <view class="perf-block">
             <view class="block-label-row">
-              <text class="block-label">综合表现分</text>
+              <text class="block-label">近期综合表现分</text>
             </view>
             <template v-if="hasPerf">
               <view class="perf-val-row">
@@ -116,52 +118,81 @@
       <view v-if="summary.total > 0" class="card summary-card">
         <view class="sec-head">
           <text class="sec-title">近期战绩统计</text>
-          <text class="sec-sub">最近 {{ summary.total }} 场有效对局</text>
+          <text class="sec-sub">最近 {{ summary.total }} 场对局</text>
         </view>
 
         <view class="winrate-box">
           <view class="winrate-top">
-            <text class="winrate-record">{{ summary.wins }}胜 {{ summary.losses }}负</text>
+            <text class="winrate-record">{{ summary.total }}场 {{ summary.wins }}胜 {{ summary.losses }}负</text>
             <text class="winrate-pct">胜率 {{ summary.winRate }}%</text>
           </view>
           <view class="winrate-bar">
             <view class="winrate-fill" :style="{ width: summary.winRate + '%' }"></view>
           </view>
-          <view class="side-row">
-            <text class="side-item blue">
-              蓝方 {{ summary.blueTotal ? summary.blueWinRate + "% (" + summary.blueWins + "/" + summary.blueTotal + ")" : "—" }}
-            </text>
-            <text class="side-item red">
-              红方 {{ summary.redTotal ? summary.redWinRate + "% (" + summary.redWins + "/" + summary.redTotal + ")" : "—" }}
-            </text>
+
+          <view class="side-table">
+            <view class="side-tr head">
+              <text class="side-th side-col-name">阵营</text>
+              <text class="side-th side-col-rec">战绩</text>
+              <text class="side-th side-col-num">占比</text>
+              <text class="side-th side-col-num">胜率</text>
+            </view>
+            <view class="side-tr">
+              <view class="side-td side-col-name blue">
+                <text class="side-dot blue"></text>
+                <text>蓝方</text>
+              </view>
+              <text class="side-td side-col-rec">
+                {{ summary.blueTotal }}场 {{ summary.blueWins }}胜 {{ summary.blueLosses }}负
+              </text>
+              <text class="side-td side-col-num">{{ summary.blueRate }}%</text>
+              <text class="side-td side-col-num highlight">{{ summary.blueWinRate }}%</text>
+            </view>
+            <view class="side-tr">
+              <view class="side-td side-col-name red">
+                <text class="side-dot red"></text>
+                <text>红方</text>
+              </view>
+              <text class="side-td side-col-rec">
+                {{ summary.redTotal }}场 {{ summary.redWins }}胜 {{ summary.redLosses }}负
+              </text>
+              <text class="side-td side-col-num">{{ summary.redRate }}%</text>
+              <text class="side-td side-col-num highlight">{{ summary.redWinRate }}%</text>
+            </view>
           </view>
         </view>
 
         <view class="stat-grid">
-          <view class="stat-cell">
-            <text class="stat-val">{{ summary.kdaRatio }}</text>
+          <view class="stat-cell kda-cell">
+            <text class="stat-val gold">{{ summary.kdaRatio }}</text>
             <text class="stat-sub">{{ summary.avgK }} / {{ summary.avgD }} / {{ summary.avgA }}</text>
             <text class="stat-lbl">场均 KDA</text>
           </view>
           <view class="stat-cell">
-            <text class="stat-val">{{ summary.kp }}%</text>
+            <text class="stat-val">{{ summary.hasAdv ? summary.kp + "%" : "—" }}</text>
             <text class="stat-lbl">场均参团率</text>
-          </view>
-          <view class="stat-cell">
-            <text class="stat-val">{{ summary.dmgShare }}%</text>
-            <text class="stat-lbl">伤害占比</text>
-          </view>
-          <view class="stat-cell">
-            <text class="stat-val">{{ summary.takenShare }}%</text>
-            <text class="stat-lbl">承伤占比</text>
-          </view>
-          <view class="stat-cell">
-            <text class="stat-val">{{ summary.dmgConv }}%</text>
-            <text class="stat-lbl">伤害转化率</text>
           </view>
           <view class="stat-cell">
             <text class="stat-val">{{ summary.avgDuration }}</text>
             <text class="stat-lbl">场均时长</text>
+          </view>
+          <view class="stat-cell">
+            <text class="stat-val">{{ summary.hasAdv ? summary.dmgShare + "%" : "—" }}</text>
+            <text class="stat-lbl">伤害占比</text>
+          </view>
+          <view class="stat-cell">
+            <text class="stat-val">{{ summary.hasAdv ? summary.takenShare + "%" : "—" }}</text>
+            <text class="stat-lbl">承伤占比</text>
+          </view>
+          <view class="stat-cell">
+            <text class="stat-val">{{ summary.hasAdv ? summary.goldShare + "%" : "—" }}</text>
+            <text class="stat-lbl">经济占比</text>
+          </view>
+          <view class="stat-cell span-full">
+            <view class="conv-row">
+              <text class="stat-lbl">伤害转化率（总伤害 ÷ 总经济）</text>
+              <text class="stat-val gold">{{ summary.hasAdv ? summary.dmgConv + "%" : "—" }}</text>
+            </view>
           </view>
         </view>
       </view>
@@ -201,6 +232,9 @@
               <view class="match-info">
                 <view class="match-title-row">
                   <text class="result-badge" :class="m.resultClass">{{ m.resultText }}</text>
+                  <text v-if="m.champ.title || m.champ.name" class="champ-name-tag">
+                    {{ m.champ.title || m.champ.name }}
+                  </text>
                   <text v-if="m.teamSide" class="team-pill" :class="m.teamSide === 100 ? 'blue' : 'red'">
                     {{ m.teamSide === 100 ? "蓝方" : "红方" }}
                   </text>
@@ -210,8 +244,9 @@
                 <view class="kda-row">
                   <text class="kda-nums">{{ m.kills }} / {{ m.deaths }} / {{ m.assists }}</text>
                   <text class="kda-ratio">KDA {{ m.kdaText }}</text>
+                  <text v-if="m.isAborted" class="perf-pill abort">终止</text>
                   <text
-                    v-if="m.selfPerf !== null"
+                    v-else-if="m.selfPerf !== null"
                     class="perf-pill"
                     :class="perfLevel(m.selfPerf)"
                   >
@@ -223,24 +258,27 @@
               <view class="expand-arrow">{{ expandedMap[idx] ? "收起 ▴" : "详情 ▾" }}</view>
             </view>
 
-            <!-- 本局均分、分差、敌我均分 -->
+            <!-- 本局均分、分差、敌我均分（4列工整网格） -->
             <view v-if="m.hasMatchRating" class="mmr-strip">
-              <view v-if="m.avgRating" class="mmr-pill">
+              <view class="mmr-pill">
                 <text class="mmr-k">本局均分</text>
-                <text class="mmr-v">{{ m.avgRating }}</text>
+                <text class="mmr-v">{{ m.avgRating ?? "—" }}</text>
               </view>
-              <view v-if="m.teamRating" class="mmr-pill">
-                <text class="mmr-k">己方</text>
-                <text class="mmr-v">{{ m.teamRating }}</text>
+              <view class="mmr-pill">
+                <text class="mmr-k">己方均分</text>
+                <text class="mmr-v">{{ m.teamRating ?? "—" }}</text>
               </view>
-              <view v-if="m.enemyRating" class="mmr-pill">
-                <text class="mmr-k">敌方</text>
-                <text class="mmr-v">{{ m.enemyRating }}</text>
+              <view class="mmr-pill">
+                <text class="mmr-k">敌方均分</text>
+                <text class="mmr-v">{{ m.enemyRating ?? "—" }}</text>
               </view>
-              <view v-if="m.diffRating !== null" class="mmr-pill">
-                <text class="mmr-k">分差</text>
-                <text class="mmr-v" :class="m.diffRating > 0 ? 'pos' : m.diffRating < 0 ? 'neg' : ''">
-                  {{ m.diffRating > 0 ? "+" + m.diffRating : m.diffRating }}
+              <view class="mmr-pill">
+                <text class="mmr-k">双方分差</text>
+                <text
+                  class="mmr-v"
+                  :class="m.diffRating > 0 ? 'pos' : m.diffRating < 0 ? 'neg' : ''"
+                >
+                  {{ m.diffRating === null ? "—" : m.diffRating > 0 ? "+" + m.diffRating : m.diffRating }}
                 </text>
               </view>
             </view>
@@ -316,6 +354,7 @@
                         mode="aspectFill"
                         lazy-load
                       />
+                      <view v-else class="p-avatar placeholder"></view>
                       <view v-if="p.spells.length > 0" class="p-spells">
                         <image
                           v-for="(sp, sIdx) in p.spells"
@@ -351,8 +390,9 @@
 
                   <view class="p-right">
                     <text v-if="p.rating" class="p-rating-badge">{{ p.rating }}分</text>
+                    <text v-if="m.isAborted" class="p-perf-badge abort">终止</text>
                     <text
-                      v-if="p.perf !== null"
+                      v-else-if="p.perf !== null"
                       class="p-perf-badge"
                       :class="perfLevel(p.perf)"
                     >
@@ -404,6 +444,29 @@
           </view>
         </view>
       </view>
+
+      <!-- 底部隐藏分说明 -->
+      <view class="card faq-card">
+        <view class="faq-title">关于海克斯大乱斗隐藏分说明</view>
+        <view class="faq-item">
+          <text class="faq-q">1. 隐藏分是如何计算的？</text>
+          <text class="faq-a">
+            基于公开对局记录与匹配系统的平衡特征，通过算法构建的第三方能力评估体系（非官方数值），仅用于衡量海克斯大乱斗模式的综合竞技水平。
+          </text>
+        </view>
+        <view class="faq-item">
+          <text class="faq-q">2. 为什么组排或部分场次误差较大？</text>
+          <text class="faq-a">
+            单人匹配的评估准确度最高；多人组排、跨分段开黑或长期未进行海克斯大乱斗对局时，分值会展示为「近期推算」并附带误差区间（±）。
+          </text>
+        </view>
+        <view class="faq-item">
+          <text class="faq-q">3. 表现分代表什么？</text>
+          <text class="faq-a">
+            综合对局中的 KDA、参团率、伤害占比、承伤、控制与团队协同等多维指标计算出的单场及近期评分（0~100分）。
+          </text>
+        </view>
+      </view>
     </template>
   </view>
 </template>
@@ -442,6 +505,7 @@ const profile = ref(null)
 const historyList = ref([])
 const expandedMap = ref({})
 let teamsCache = {}
+let requestSeq = 0
 
 function loadHistory() {
   try {
@@ -457,6 +521,14 @@ function loadHistory() {
 function saveHistory(gameName, tagLine) {
   const full = `${gameName}#${tagLine}`
   const next = [full, ...historyList.value.filter((item) => item !== full)].slice(0, 10)
+  historyList.value = next
+  try {
+    uni.setStorageSync(HISTORY_KEY, next)
+  } catch (e) {}
+}
+
+function removeHistory(target) {
+  const next = historyList.value.filter((item) => item !== target)
   historyList.value = next
   try {
     uni.setStorageSync(HISTORY_KEY, next)
@@ -498,6 +570,7 @@ function getApiBase() {
 }
 
 function fetchRating(gameName, tagLine) {
+  const seq = ++requestSeq
   queryInput.value = `${gameName}#${tagLine}`
   loading.value = true
   errorMsg.value = ""
@@ -511,6 +584,7 @@ function fetchRating(gameName, tagLine) {
     method: "GET",
     timeout: 15000,
     success(res) {
+      if (seq !== requestSeq) return
       const body = res.data || {}
       if (res.statusCode === 200 && body.code === 200 && body.data) {
         profile.value = body.data
@@ -521,11 +595,14 @@ function fetchRating(gameName, tagLine) {
       }
     },
     fail() {
+      if (seq !== requestSeq) return
       profile.value = null
       errorMsg.value = "网络请求失败，请检查网络连接（小程序开发工具请开启「不校验合法域名」或配置 request 域名）"
     },
     complete() {
-      loading.value = false
+      if (seq === requestSeq) {
+        loading.value = false
+      }
     }
   })
 }
@@ -586,13 +663,22 @@ const perfComments = computed(() => {
 })
 
 const lastMatchTimeText = computed(() => {
-  const raw = profile.value && profile.value.remoteLastMatchTime
+  if (!profile.value || profile.value.ratingType !== 0) return ""
+  const raw = profile.value.remoteLastMatchTime
   if (!raw) return ""
-  return formatRelativeTime(raw)
+  const date = new Date(raw)
+  const ts = date.getTime()
+  if (!Number.isFinite(ts)) return ""
+  const pad = (n) => String(n).padStart(2, "0")
+  const exact = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+  const rel = formatRelativeTime(raw)
+  return rel ? `${exact}（${rel}）` : exact
 })
 
 function formatScore(val) {
-  return Number(val || 0).toFixed(1)
+  const num = Number(val ?? 0)
+  if (!Number.isFinite(num)) return "0"
+  return Number.isInteger(num) ? String(num) : num.toFixed(1)
 }
 
 function clampScore(val) {
@@ -646,9 +732,13 @@ function getChampionInfo(id) {
   return entry
 }
 
+// 过滤掉 <=0 的空槽位并左对齐补齐 4 格，与官网 Ie(e) 保持一致
 function getAugmentSlots(p) {
-  const ids = [p.augment0, p.augment1, p.augment2, p.augment3]
-  return ids.map((id) => {
+  const validIds = [p.augment0, p.augment1, p.augment2, p.augment3].filter(
+    (id) => typeof id === "number" && id > 0
+  )
+  const padded = [validIds[0] || 0, validIds[1] || 0, validIds[2] || 0, validIds[3] || 0]
+  return padded.map((id) => {
     const key = String(id || 0)
     const entry = resources.augments[key]
     if (!entry) return { id: 0, name: "", icon: "", rarity: "1", detailId: "" }
@@ -683,10 +773,10 @@ function getSpellList(p) {
     .filter((entry) => entry && entry.icon)
 }
 
+// 严格对齐 ARAMKit 官网 He(e) 的统计口径
 const summary = computed(() => {
   const list = (profile.value && profile.value.matches) || []
-  const valid = list.filter((m) => m.matchResult !== 6)
-  if (valid.length === 0) {
+  if (list.length === 0) {
     return { total: 0 }
   }
 
@@ -702,11 +792,16 @@ const summary = computed(() => {
   let kpSum = 0
   let kpCnt = 0
   let dmgShareSum = 0
+  let dmgShareCnt = 0
   let takenShareSum = 0
-  let convSum = 0
-  let shareCnt = 0
+  let takenShareCnt = 0
+  let goldShareSum = 0
+  let goldShareCnt = 0
+  let selfTotalDmg = 0
+  let selfTotalGold = 0
+  let hasAdv = false
 
-  for (const m of valid) {
+  for (const m of list) {
     const win = isWinResult(m.matchResult)
     if (win) wins++
     sumK += Number(m.kills || 0)
@@ -725,8 +820,20 @@ const summary = computed(() => {
         if (win) redWins++
       }
 
-      if (typeof selfP.killParticipation === "number") {
-        kpSum += selfP.killParticipation
+      const pDmg = Number(selfP.totalDamage || 0)
+      const pGold = Number(selfP.goldEarned || 0)
+      const pTaken = Number(selfP.totalDamageTaken || 0)
+      const pKp = Number(selfP.killParticipation || 0)
+
+      if (pDmg > 0 || pGold > 0 || pKp > 0) {
+        hasAdv = true
+      }
+
+      selfTotalDmg += pDmg
+      selfTotalGold += pGold
+
+      if (pKp > 0) {
+        kpSum += pKp
         kpCnt++
       }
 
@@ -735,22 +842,26 @@ const summary = computed(() => {
       const teamTaken = mates.reduce((acc, p) => acc + Number(p.totalDamageTaken || 0), 0)
       const teamGold = mates.reduce((acc, p) => acc + Number(p.goldEarned || 0), 0)
 
-      if (teamDmg > 0 && teamTaken > 0 && teamGold > 0) {
-        const dShare = Number(selfP.totalDamage || 0) / teamDmg
-        const tShare = Number(selfP.totalDamageTaken || 0) / teamTaken
-        const gShare = Number(selfP.goldEarned || 0) / teamGold
-        dmgShareSum += dShare
-        takenShareSum += tShare
-        if (gShare > 0) convSum += dShare / gShare
-        shareCnt++
+      if (teamDmg > 0) {
+        dmgShareSum += pDmg / teamDmg
+        dmgShareCnt++
+      }
+      if (teamTaken > 0) {
+        takenShareSum += pTaken / teamTaken
+        takenShareCnt++
+      }
+      if (teamGold > 0) {
+        goldShareSum += pGold / teamGold
+        goldShareCnt++
       }
     }
   }
 
-  const total = valid.length
+  const total = list.length
   const losses = total - wins
   const winRate = Math.round((wins / total) * 100)
   const kdaRatio = sumD > 0 ? ((sumK + sumA) / sumD).toFixed(2) : (sumK + sumA).toFixed(2)
+  const round1 = (val) => Math.round(val * 10) / 10
 
   return {
     total,
@@ -759,29 +870,44 @@ const summary = computed(() => {
     winRate,
     blueTotal,
     blueWins,
+    blueLosses: blueTotal - blueWins,
+    blueRate: Math.round((blueTotal / total) * 100),
     blueWinRate: blueTotal ? Math.round((blueWins / blueTotal) * 100) : 0,
     redTotal,
     redWins,
+    redLosses: redTotal - redWins,
+    redRate: Math.round((redTotal / total) * 100),
     redWinRate: redTotal ? Math.round((redWins / redTotal) * 100) : 0,
-    avgK: (sumK / total).toFixed(1),
-    avgD: (sumD / total).toFixed(1),
-    avgA: (sumA / total).toFixed(1),
+    avgK: round1(sumK / total),
+    avgD: round1(sumD / total),
+    avgA: round1(sumA / total),
     kdaRatio,
-    kp: kpCnt ? Math.round((kpSum / kpCnt) * 100) : 0,
-    dmgShare: shareCnt ? Math.round((dmgShareSum / shareCnt) * 100) : 0,
-    takenShare: shareCnt ? Math.round((takenShareSum / shareCnt) * 100) : 0,
-    dmgConv: shareCnt ? Math.round((convSum / shareCnt) * 100) : 0,
+    hasAdv,
+    kp: kpCnt ? round1((kpSum / kpCnt) * 100) : 0,
+    dmgShare: dmgShareCnt ? round1((dmgShareSum / dmgShareCnt) * 100) : 0,
+    takenShare: takenShareCnt ? round1((takenShareSum / takenShareCnt) * 100) : 0,
+    goldShare: goldShareCnt ? round1((goldShareSum / goldShareCnt) * 100) : 0,
+    dmgConv: selfTotalGold > 0 ? round1((selfTotalDmg / selfTotalGold) * 100) : 0,
     avgDuration: formatDuration(sumDur / total)
   }
 })
 
+const sortedMatches = computed(() => {
+  const list = (profile.value && profile.value.matches) || []
+  return list
+    .map((m, i) => ({ m, i, t: new Date(m.gameCreationTime || 0).getTime() || 0 }))
+    .sort((a, b) => b.t - a.t || b.i - a.i)
+    .map((entry) => entry.m)
+})
+
 // 仅构建对局摘要头，10人详情在点击展开时按需构建并缓存
 const enrichedMatches = computed(() => {
-  const list = (profile.value && profile.value.matches) || []
+  const list = sortedMatches.value
   return list.map((m) => {
     const players = Array.isArray(m.participants) ? m.participants : []
     const selfP = players.find((p) => p.isSelf) || {}
     const champ = getChampionInfo(m.championId || selfP.championId)
+    const isAborted = m.matchResult === 6 || selfP.performanceScore === null
     const win = isWinResult(m.matchResult)
     const resultClass = m.matchResult === 6 ? "abort" : win ? "win" : "loss"
     const resultText = RESULT_TEXTS[m.matchResult] || (win ? "胜利" : "失败")
@@ -804,6 +930,7 @@ const enrichedMatches = computed(() => {
     return {
       champ,
       spells: getSpellList(selfP),
+      isAborted,
       resultClass,
       resultText,
       teamSide,
@@ -827,7 +954,7 @@ const enrichedMatches = computed(() => {
 
 function getMatchTeams(idx) {
   if (teamsCache[idx]) return teamsCache[idx]
-  const list = (profile.value && profile.value.matches) || []
+  const list = sortedMatches.value
   const m = list[idx]
   if (!m) return []
   const players = Array.isArray(m.participants) ? m.participants : []
@@ -1000,13 +1127,23 @@ onLoad((query) => {
 }
 
 .history-chip {
-  display: inline-block;
-  padding: 8rpx 22rpx;
+  display: inline-flex;
+  align-items: center;
+  gap: 10rpx;
+  padding: 8rpx 18rpx 8rpx 22rpx;
   margin-right: 12rpx;
   border-radius: 999rpx;
   background: #1c2030;
   color: #d7deec;
   font-size: 22rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.06);
+}
+
+.history-chip-del {
+  color: #6c7486;
+  font-size: 24rpx;
+  line-height: 1;
+  padding: 0 4rpx;
 }
 
 .state-box {
@@ -1106,12 +1243,38 @@ onLoad((query) => {
   background: #141724;
   border-radius: 16rpx;
   padding: 20rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.04);
+}
+
+.rating-block.current {
+  border-color: rgba(200, 161, 90, 0.22);
+}
+
+.rating-block.estimated {
+  border-color: rgba(255, 159, 67, 0.28);
 }
 
 .block-label-row {
   display: flex;
   align-items: center;
   gap: 10rpx;
+}
+
+.status-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-dot.cur {
+  background: #4cd97b;
+  box-shadow: 0 0 8rpx rgba(76, 217, 123, 0.6);
+}
+
+.status-dot.est {
+  background: #ff9f43;
+  box-shadow: 0 0 8rpx rgba(255, 159, 67, 0.6);
 }
 
 .block-label {
@@ -1122,8 +1285,8 @@ onLoad((query) => {
 .estimate-tag {
   padding: 2rpx 10rpx;
   border-radius: 8rpx;
-  background: rgba(200, 161, 90, 0.2);
-  color: #f4d58d;
+  background: rgba(255, 159, 67, 0.18);
+  color: #ffb974;
   font-size: 18rpx;
 }
 
@@ -1138,6 +1301,10 @@ onLoad((query) => {
   font-size: 48rpx;
   font-weight: 800;
   color: #f4d58d;
+}
+
+.rating-num.est {
+  color: #ffb974;
 }
 
 .rating-err {
@@ -1155,6 +1322,7 @@ onLoad((query) => {
   margin-top: 10rpx;
   font-size: 20rpx;
   color: #9aa3b5;
+  line-height: 1.4;
 }
 
 .perf-val-row {
@@ -1275,19 +1443,69 @@ onLoad((query) => {
   border-radius: 999rpx;
 }
 
-.side-row {
-  margin-top: 10rpx;
+.side-table {
+  margin-top: 16rpx;
+  border-top: 2rpx solid rgba(255, 255, 255, 0.05);
+  padding-top: 12rpx;
+}
+
+.side-tr {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  padding: 6rpx 0;
   font-size: 22rpx;
 }
 
-.side-item.blue {
+.side-tr.head {
+  color: #6c7486;
+  font-size: 20rpx;
+  padding-bottom: 4rpx;
+}
+
+.side-col-name {
+  width: 110rpx;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  font-weight: 600;
+}
+
+.side-col-name.blue {
   color: #6eb5ff;
 }
 
-.side-item.red {
+.side-col-name.red {
   color: #ff8585;
+}
+
+.side-dot {
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+}
+
+.side-dot.blue {
+  background: #3b82f6;
+}
+
+.side-dot.red {
+  background: #ef4444;
+}
+
+.side-col-rec {
+  flex: 1;
+  color: #d7deec;
+}
+
+.side-col-num {
+  width: 100rpx;
+  text-align: right;
+  color: #9aa3b5;
+}
+
+.side-col-num.highlight {
+  color: #f4f1e8;
+  font-weight: 600;
 }
 
 .stat-grid {
@@ -1308,10 +1526,29 @@ onLoad((query) => {
   justify-content: center;
 }
 
+.stat-cell.span-full {
+  grid-column: 1 / -1;
+  padding: 14rpx 20rpx;
+}
+
+.conv-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.conv-row .stat-lbl {
+  margin-top: 0;
+}
+
 .stat-val {
   font-size: 28rpx;
   font-weight: 700;
   color: #f4f1e8;
+}
+
+.stat-val.gold {
+  color: #f4d58d;
 }
 
 .stat-sub {
@@ -1412,6 +1649,12 @@ onLoad((query) => {
   color: #9aa3b5;
 }
 
+.champ-name-tag {
+  font-size: 22rpx;
+  color: #d7deec;
+  font-weight: 600;
+}
+
 .team-pill {
   padding: 2rpx 10rpx;
   border-radius: 6rpx;
@@ -1474,6 +1717,11 @@ onLoad((query) => {
   color: #ff8585;
 }
 
+.perf-pill.abort {
+  background: rgba(154, 163, 181, 0.15);
+  color: #9aa3b5;
+}
+
 .expand-arrow {
   font-size: 22rpx;
   color: #c8a15a;
@@ -1482,28 +1730,32 @@ onLoad((query) => {
 
 .mmr-strip {
   margin-top: 14rpx;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10rpx;
 }
 
 .mmr-pill {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6rpx;
+  justify-content: center;
+  gap: 2rpx;
   background: #141724;
-  padding: 6rpx 14rpx;
+  padding: 8rpx 6rpx;
   border-radius: 10rpx;
   font-size: 20rpx;
 }
 
 .mmr-k {
   color: #9aa3b5;
+  font-size: 18rpx;
 }
 
 .mmr-v {
   color: #f4d58d;
   font-weight: 700;
+  font-size: 22rpx;
 }
 
 .mmr-v.pos {
@@ -1594,19 +1846,19 @@ onLoad((query) => {
 .p-row {
   padding: 14rpx 12rpx;
   border-radius: 12rpx;
-  margin-bottom: 10rpx;
-  background: rgba(255, 255, 255, 0.025);
+  margin-bottom: 8rpx;
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .p-row.self {
-  background: rgba(200, 161, 90, 0.12);
-  border: 2rpx solid rgba(200, 161, 90, 0.35);
+  background: rgba(200, 161, 90, 0.1);
+  border: 2rpx solid rgba(200, 161, 90, 0.28);
 }
 
 .p-top {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 12rpx;
 }
 
@@ -1626,8 +1878,8 @@ onLoad((query) => {
 }
 
 .p-avatar {
-  width: 58rpx;
-  height: 58rpx;
+  width: 60rpx;
+  height: 60rpx;
   border-radius: 12rpx;
   background: #12141c;
 }
@@ -1639,10 +1891,9 @@ onLoad((query) => {
 }
 
 .p-spell-icon {
-  width: 26rpx;
-  height: 26rpx;
+  width: 28rpx;
+  height: 28rpx;
   border-radius: 6rpx;
-  background: #12141c;
 }
 
 .p-identity {
@@ -1654,40 +1905,47 @@ onLoad((query) => {
   display: flex;
   align-items: center;
   gap: 6rpx;
-  flex-wrap: wrap;
 }
 
 .p-name {
   font-size: 24rpx;
   font-weight: 600;
   color: #f4f1e8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .p-tag {
   font-size: 20rpx;
   color: #9aa3b5;
-}
-
-.query-hint {
-  font-size: 18rpx;
-  opacity: 0.65;
+  flex-shrink: 0;
 }
 
 .self-tag {
-  padding: 0 8rpx;
+  padding: 2rpx 8rpx;
   border-radius: 6rpx;
   background: #c8a15a;
   color: #1a1408;
   font-size: 18rpx;
   font-weight: 700;
+  flex-shrink: 0;
+}
+
+.query-hint {
+  font-size: 20rpx;
+  opacity: 0.7;
+  flex-shrink: 0;
 }
 
 .p-stats-line {
   margin-top: 4rpx;
   display: flex;
+  align-items: center;
   gap: 12rpx;
   font-size: 20rpx;
   color: #9aa3b5;
+  flex-wrap: wrap;
 }
 
 .p-kda {
@@ -1698,10 +1956,8 @@ onLoad((query) => {
 .p-dmg-bar {
   margin-top: 6rpx;
   height: 6rpx;
-  width: 100%;
-  max-width: 260rpx;
-  background: rgba(255, 255, 255, 0.08);
   border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.06);
   overflow: hidden;
 }
 
@@ -1711,31 +1967,35 @@ onLoad((query) => {
 }
 
 .p-dmg-fill.blue {
-  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  background: #3b82f6;
 }
 
 .p-dmg-fill.red {
-  background: linear-gradient(90deg, #ef4444, #f87171);
+  background: #ef4444;
 }
 
 .p-right {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 4rpx;
+  gap: 6rpx;
   flex-shrink: 0;
 }
 
 .p-rating-badge {
-  font-size: 22rpx;
-  font-weight: 700;
+  padding: 2rpx 10rpx;
+  border-radius: 8rpx;
+  background: rgba(200, 161, 90, 0.18);
   color: #f4d58d;
+  font-size: 20rpx;
+  font-weight: 700;
 }
 
 .p-perf-badge {
-  font-size: 18rpx;
   padding: 2rpx 10rpx;
-  border-radius: 999rpx;
+  border-radius: 8rpx;
+  font-size: 18rpx;
+  font-weight: 600;
 }
 
 .p-perf-badge.high {
@@ -1753,10 +2013,73 @@ onLoad((query) => {
   color: #ff8585;
 }
 
+.p-perf-badge.abort {
+  background: rgba(154, 163, 181, 0.15);
+  color: #9aa3b5;
+}
+
 .p-loadout {
   margin-top: 10rpx;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  gap: 8rpx;
+}
+
+.hex-frame {
+  box-sizing: border-box;
+  border: 2rpx solid #7f8798;
+}
+
+.hex-frame.r1 {
+  border-color: #9aa3b5;
+}
+
+.hex-frame.r2 {
+  border-color: #e4b860;
+}
+
+.hex-frame.r4,
+.hex-frame.r3 {
+  border-color: #b784ff;
+}
+
+.empty {
+  margin-top: 24rpx;
+  color: #9aa3b5;
+  font-size: 24rpx;
+  text-align: center;
+  padding: 40rpx 0;
+}
+
+.faq-card {
+  margin-top: 28rpx;
+  border: 2rpx solid rgba(200, 161, 90, 0.14);
+}
+
+.faq-title {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #f4d58d;
+  margin-bottom: 14rpx;
+}
+
+.faq-item + .faq-item {
+  margin-top: 14rpx;
+}
+
+.faq-q {
+  display: block;
+  font-size: 22rpx;
+  font-weight: 600;
+  color: #f4f1e8;
+}
+
+.faq-a {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 21rpx;
+  color: #9aa3b5;
+  line-height: 1.5;
 }
 </style>
