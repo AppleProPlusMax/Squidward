@@ -8,7 +8,7 @@ export default {
 page {
   background: #12141c;
   color: #f4f1e8;
-  font-size: 28rpx;
+  font-size: 26rpx;
 }
 
 .off {
@@ -18,42 +18,44 @@ page {
 .empty {
   text-align: center;
   color: #9aa3b5;
-  padding: 80rpx 0;
+  padding: 64rpx 0;
 }
 
 .arrow {
   color: #9aa3b5;
-  font-size: 40rpx;
+  font-size: 36rpx;
 }
 
 .badge {
-  min-width: 64rpx;
-  padding: 8rpx 12rpx;
-  border-radius: 12rpx;
+  min-width: 52rpx;
+  padding: 6rpx 10rpx;
+  border-radius: 10rpx;
   background: #3a4258;
   color: #f4f1e8;
+  font-size: 22rpx;
   font-weight: 700;
   text-align: center;
   flex-shrink: 0;
 }
 
 .badge.sm {
-  min-width: 52rpx;
-  padding: 4rpx 10rpx;
-  font-size: 22rpx;
+  min-width: 44rpx;
+  padding: 2rpx 8rpx;
+  font-size: 20rpx;
+  border-radius: 8rpx;
 }
 
 .mini {
   position: absolute;
-  top: -8rpx;
-  right: -10rpx;
-  padding: 0 8rpx;
-  border-radius: 8rpx;
+  top: -6rpx;
+  right: -6rpx;
+  padding: 0 6rpx;
+  border-radius: 6rpx;
   background: #3a4258;
   color: #f4f1e8;
-  font-size: 18rpx;
+  font-size: 16rpx;
   font-weight: 700;
-  line-height: 28rpx;
+  line-height: 24rpx;
 }
 
 .badge.SS,
@@ -83,7 +85,7 @@ page {
 /* 海克斯稀有度色边：r1 白银、r4 黄金、r8 棱彩 */
 .hex-frame {
   box-sizing: border-box;
-  border: 3rpx solid #3a4258;
+  border: 2rpx solid #3a4258;
 }
 
 .hex-frame.r1 {
@@ -100,20 +102,20 @@ page {
 
 .seg {
   display: flex;
-  gap: 12rpx;
-  margin-top: 24rpx;
-  padding: 10rpx;
+  gap: 10rpx;
+  margin-top: 16rpx;
+  padding: 8rpx;
   background: #1c2030;
-  border-radius: 18rpx;
+  border-radius: 14rpx;
 }
 
 .seg-item {
   flex: 1;
   text-align: center;
-  padding: 16rpx 0;
-  border-radius: 14rpx;
+  padding: 12rpx 0;
+  border-radius: 10rpx;
   color: #9aa3b5;
-  font-size: 26rpx;
+  font-size: 24rpx;
 }
 
 .seg-item.on {
@@ -123,16 +125,16 @@ page {
 }
 
 .box {
-  margin-top: 20rpx;
+  margin-top: 14rpx;
   background: #1c2030;
-  border-radius: 18rpx;
-  padding: 24rpx;
+  border-radius: 16rpx;
+  padding: 18rpx 20rpx;
 }
 
 .box-title {
-  font-size: 30rpx;
+  font-size: 26rpx;
   font-weight: 700;
-  margin-bottom: 16rpx;
+  margin-bottom: 12rpx;
 }
 
 .stats {
@@ -145,7 +147,7 @@ page {
 }
 
 .stat-value {
-  font-size: 32rpx;
+  font-size: 28rpx;
   font-weight: 700;
   color: #f4f1e8;
 }
@@ -153,7 +155,7 @@ page {
 .stat-label {
   margin-top: 4rpx;
   color: #9aa3b5;
-  font-size: 22rpx;
+  font-size: 20rpx;
 }
 
 .hero-grid {
@@ -166,26 +168,26 @@ page {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 20rpx;
+  margin-bottom: 14rpx;
 }
 
 .hero-shot {
   position: relative;
-  width: 96rpx;
-  height: 96rpx;
+  width: 76rpx;
+  height: 76rpx;
 }
 
 .hero-face {
   display: block;
-  width: 96rpx;
-  height: 96rpx;
-  border-radius: 16rpx;
+  width: 76rpx;
+  height: 76rpx;
+  border-radius: 14rpx;
   background: #0e1018;
 }
 
 .hero-name {
   width: 100%;
-  margin-top: 8rpx;
+  margin-top: 6rpx;
   color: #d5dbe8;
   font-size: 20rpx;
   text-align: center;
@@ -197,11 +199,11 @@ page {
 .list-row {
   display: flex;
   align-items: center;
-  gap: 16rpx;
-  margin-top: 14rpx;
+  gap: 14rpx;
+  margin-top: 10rpx;
   background: #1c2030;
   border-radius: 14rpx;
-  padding: 16rpx;
+  padding: 12rpx 14rpx;
 }
 
 .list-row.inset {
@@ -211,9 +213,9 @@ page {
 
 .list-icon {
   display: block;
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 14rpx;
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 12rpx;
   background: #0e1018;
   flex-shrink: 0;
 }
@@ -224,7 +226,7 @@ page {
 }
 
 .list-name {
-  font-size: 28rpx;
+  font-size: 26rpx;
   font-weight: 600;
   color: #f4f1e8;
 }
@@ -234,8 +236,8 @@ page {
 }
 
 .list-copy .meta {
-  margin-top: 4rpx;
+  margin-top: 2rpx;
   color: #9aa3b5;
-  font-size: 22rpx;
+  font-size: 20rpx;
 }
 </style>

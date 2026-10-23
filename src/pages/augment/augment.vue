@@ -166,22 +166,22 @@ onLoad((query) => {
 
 <style>
 .page {
-  padding: 28rpx 28rpx 60rpx;
+  padding: 20rpx 24rpx 48rpx;
 }
 
 .head {
   display: flex;
   align-items: center;
-  gap: 20rpx;
+  gap: 16rpx;
   background: #1c2030;
-  border-radius: 20rpx;
-  padding: 24rpx;
+  border-radius: 16rpx;
+  padding: 18rpx 20rpx;
 }
 
 .head-icon {
-  width: 120rpx;
-  height: 120rpx;
-  border-radius: 20rpx;
+  width: 92rpx;
+  height: 92rpx;
+  border-radius: 16rpx;
   background: #0e1018;
   flex-shrink: 0;
 }
@@ -192,21 +192,21 @@ onLoad((query) => {
 }
 
 .name {
-  font-size: 40rpx;
+  font-size: 32rpx;
   font-weight: 700;
 }
 
 .chips {
-  margin-top: 10rpx;
+  margin-top: 6rpx;
 }
 
 .chip {
   display: inline-block;
-  padding: 4rpx 16rpx;
+  padding: 2rpx 12rpx;
   border-radius: 999rpx;
   background: #2a3044;
   color: #d5dbe8;
-  font-size: 22rpx;
+  font-size: 20rpx;
 }
 
 .chip.r4 {
@@ -221,23 +221,23 @@ onLoad((query) => {
 
 .desc {
   color: #d5dbe8;
-  font-size: 26rpx;
-  line-height: 1.7;
+  font-size: 24rpx;
+  line-height: 1.65;
   white-space: pre-wrap;
 }
 
 .foot,
 .hint {
   color: #9aa3b5;
-  font-size: 22rpx;
+  font-size: 20rpx;
 }
 
 .foot {
-  margin-top: 16rpx;
+  margin-top: 12rpx;
 }
 
 .hint {
-  margin: 20rpx 0 4rpx;
-  line-height: 1.5;
+  margin: 12rpx 0 8rpx;
+  line-height: 1.45;
 }
 </style>

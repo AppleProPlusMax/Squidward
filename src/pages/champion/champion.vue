@@ -28,7 +28,7 @@
       <view v-else class="hint">每套方案的装备是拿到这个海克斯的对局里出场最多的，标奖的装备只有拿到对应海克斯才会出现。</view>
       <view v-for="plan in plans" :key="plan.name" class="plan">
         <view class="plan-head">
-          <view class="badge" :class="plan.grade">{{ plan.grade }}</view>
+          <view class="badge sm" :class="plan.grade">{{ plan.grade }}</view>
           <view class="plan-copy">
             <view class="plan-name">{{ plan.name }}</view>
             <view class="meta">搭配胜率 {{ plan.winRate }}% · 样本 {{ formatGames(plan.games) }}</view>
@@ -63,49 +63,49 @@
         <view class="gear">
           <view v-if="plan.itemName0" class="item-cell" @tap="openItem(plan.itemId0)">
             <view class="item-icon">
-              <image class="icon" :class="{ reward: plan.itemPrize0 }" :src="plan.itemIcon0" mode="aspectFill" lazy-load />
+              <image class="icon gear-icon" :class="{ reward: plan.itemPrize0 }" :src="plan.itemIcon0" mode="aspectFill" lazy-load />
               <text class="num" :class="{ prize: plan.itemPrize0 }">{{ plan.itemMark0 }}</text>
             </view>
             <view class="item-name">{{ plan.itemName0 }}</view>
           </view>
           <view v-if="plan.itemName1" class="item-cell" @tap="openItem(plan.itemId1)">
             <view class="item-icon">
-              <image class="icon" :class="{ reward: plan.itemPrize1 }" :src="plan.itemIcon1" mode="aspectFill" lazy-load />
+              <image class="icon gear-icon" :class="{ reward: plan.itemPrize1 }" :src="plan.itemIcon1" mode="aspectFill" lazy-load />
               <text class="num" :class="{ prize: plan.itemPrize1 }">{{ plan.itemMark1 }}</text>
             </view>
             <view class="item-name">{{ plan.itemName1 }}</view>
           </view>
           <view v-if="plan.itemName2" class="item-cell" @tap="openItem(plan.itemId2)">
             <view class="item-icon">
-              <image class="icon" :class="{ reward: plan.itemPrize2 }" :src="plan.itemIcon2" mode="aspectFill" lazy-load />
+              <image class="icon gear-icon" :class="{ reward: plan.itemPrize2 }" :src="plan.itemIcon2" mode="aspectFill" lazy-load />
               <text class="num" :class="{ prize: plan.itemPrize2 }">{{ plan.itemMark2 }}</text>
             </view>
             <view class="item-name">{{ plan.itemName2 }}</view>
           </view>
           <view v-if="plan.itemName3" class="item-cell" @tap="openItem(plan.itemId3)">
             <view class="item-icon">
-              <image class="icon" :class="{ reward: plan.itemPrize3 }" :src="plan.itemIcon3" mode="aspectFill" lazy-load />
+              <image class="icon gear-icon" :class="{ reward: plan.itemPrize3 }" :src="plan.itemIcon3" mode="aspectFill" lazy-load />
               <text class="num" :class="{ prize: plan.itemPrize3 }">{{ plan.itemMark3 }}</text>
             </view>
             <view class="item-name">{{ plan.itemName3 }}</view>
           </view>
           <view v-if="plan.itemName4" class="item-cell" @tap="openItem(plan.itemId4)">
             <view class="item-icon">
-              <image class="icon" :class="{ reward: plan.itemPrize4 }" :src="plan.itemIcon4" mode="aspectFill" lazy-load />
+              <image class="icon gear-icon" :class="{ reward: plan.itemPrize4 }" :src="plan.itemIcon4" mode="aspectFill" lazy-load />
               <text class="num" :class="{ prize: plan.itemPrize4 }">{{ plan.itemMark4 }}</text>
             </view>
             <view class="item-name">{{ plan.itemName4 }}</view>
           </view>
           <view v-if="plan.itemName5" class="item-cell" @tap="openItem(plan.itemId5)">
             <view class="item-icon">
-              <image class="icon" :class="{ reward: plan.itemPrize5 }" :src="plan.itemIcon5" mode="aspectFill" lazy-load />
+              <image class="icon gear-icon" :class="{ reward: plan.itemPrize5 }" :src="plan.itemIcon5" mode="aspectFill" lazy-load />
               <text class="num" :class="{ prize: plan.itemPrize5 }">{{ plan.itemMark5 }}</text>
             </view>
             <view class="item-name">{{ plan.itemName5 }}</view>
           </view>
           <view v-if="plan.itemName6" class="item-cell" @tap="openItem(plan.itemId6)">
             <view class="item-icon">
-              <image class="icon" :class="{ reward: plan.itemPrize6 }" :src="plan.itemIcon6" mode="aspectFill" lazy-load />
+              <image class="icon gear-icon" :class="{ reward: plan.itemPrize6 }" :src="plan.itemIcon6" mode="aspectFill" lazy-load />
               <text class="num" :class="{ prize: plan.itemPrize6 }">{{ plan.itemMark6 }}</text>
             </view>
             <view class="item-name">{{ plan.itemName6 }}</view>
@@ -279,32 +279,40 @@ onLoad((query) => {
 
 <style>
 .page {
-  padding: 28rpx 28rpx 60rpx;
+  padding: 20rpx 24rpx 48rpx;
 }
 
 .head {
   display: flex;
   align-items: center;
-  gap: 20rpx;
+  gap: 16rpx;
   background: #1c2030;
-  border-radius: 20rpx;
-  padding: 24rpx;
+  border-radius: 16rpx;
+  padding: 18rpx 20rpx;
 }
 
-.portrait,
-.icon {
-  width: 88rpx;
-  height: 88rpx;
+.portrait {
+  width: 96rpx;
+  height: 96rpx;
   border-radius: 16rpx;
   background: #0e1018;
   flex-shrink: 0;
   display: block;
 }
 
-.portrait {
-  width: 128rpx;
-  height: 128rpx;
-  border-radius: 20rpx;
+.icon {
+  width: 68rpx;
+  height: 68rpx;
+  border-radius: 12rpx;
+  background: #0e1018;
+  flex-shrink: 0;
+  display: block;
+}
+
+.gear-icon {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 12rpx;
 }
 
 .head-main,
@@ -314,71 +322,69 @@ onLoad((query) => {
 }
 
 .name {
-  font-size: 40rpx;
+  font-size: 32rpx;
   font-weight: 700;
 }
 
 .aliases {
-  margin-top: 8rpx;
+  margin-top: 6rpx;
 }
 
 .chip {
   display: inline-block;
-  margin: 0 8rpx 8rpx 0;
-  padding: 4rpx 12rpx;
+  margin: 0 6rpx 6rpx 0;
+  padding: 2rpx 10rpx;
   border-radius: 999rpx;
   background: #2a3144;
   color: #d5dbe8;
-  font-size: 22rpx;
+  font-size: 20rpx;
 }
 
 .meta,
 .hint,
 .piece-name {
   color: #9aa3b5;
-  font-size: 22rpx;
+  font-size: 20rpx;
 }
 
 .meta {
-  margin-top: 4rpx;
+  margin-top: 2rpx;
 }
 
 .hint {
-  margin: 18rpx 0 12rpx;
-  line-height: 1.5;
+  margin: 12rpx 0 10rpx;
+  line-height: 1.45;
 }
 
-.plan,
-.item-row {
+.plan {
   background: #1c2030;
-  border-radius: 16rpx;
-  padding: 18rpx;
-  margin-bottom: 16rpx;
+  border-radius: 14rpx;
+  padding: 14rpx 16rpx;
+  margin-bottom: 12rpx;
 }
 
-.plan-head,
-.item-row {
+.plan-head {
   display: flex;
   align-items: center;
-  gap: 16rpx;
+  gap: 12rpx;
 }
 
 .plan-name {
-  font-size: 30rpx;
+  font-size: 26rpx;
   font-weight: 700;
 }
 
 .hex-row {
   display: flex;
   align-items: flex-start;
-  gap: 28rpx;
-  margin-top: 22rpx;
+  gap: 20rpx;
+  margin-top: 14rpx;
 }
 
 .hex-group {
   display: flex;
   align-items: flex-start;
-  gap: 8rpx;
+  gap: 6rpx;
 }
 
 .role-tag {
@@ -386,15 +392,15 @@ onLoad((query) => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 28rpx;
-  height: 88rpx;
+  width: 24rpx;
+  height: 68rpx;
   color: #8b93a7;
-  font-size: 20rpx;
+  font-size: 18rpx;
   line-height: 1.15;
 }
 
 .hex-cell {
-  width: 132rpx;
+  width: 108rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -403,11 +409,11 @@ onLoad((query) => {
 .hex-name,
 .item-name {
   width: 100%;
-  margin-top: 8rpx;
+  margin-top: 6rpx;
   color: #d5dbe8;
-  font-size: 20rpx;
-  line-height: 28rpx;
-  height: 28rpx;
+  font-size: 18rpx;
+  line-height: 24rpx;
+  height: 24rpx;
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -415,14 +421,16 @@ onLoad((query) => {
 }
 
 .gear {
-  display: flex;
-  flex-wrap: wrap;
-  margin-top: 22rpx;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10rpx 6rpx;
+  margin-top: 14rpx;
+  padding-top: 12rpx;
+  border-top: 2rpx solid rgba(255, 255, 255, 0.05);
 }
 
 .item-cell {
-  width: 25%;
-  margin-bottom: 18rpx;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -430,38 +438,41 @@ onLoad((query) => {
 
 .item-icon {
   position: relative;
-  width: 88rpx;
-  height: 88rpx;
+  width: 64rpx;
+  height: 64rpx;
 }
 
 .icon.reward {
   border: 2rpx solid #e0b15a;
+  box-sizing: border-box;
 }
 
 .num {
   position: absolute;
-  top: -8rpx;
-  right: -8rpx;
-  width: 30rpx;
-  height: 30rpx;
+  top: -6rpx;
+  right: -6rpx;
+  width: 24rpx;
+  height: 24rpx;
   border-radius: 50%;
   background: #3d7eff;
   color: #fff;
-  font-size: 18rpx;
-  line-height: 30rpx;
+  font-size: 16rpx;
+  line-height: 24rpx;
   text-align: center;
 }
 
 .num.prize {
   background: #e0b15a;
   color: #1a1408;
+  font-weight: 700;
 }
 
 .order {
-  width: 40rpx;
+  width: 36rpx;
   text-align: center;
   color: #c8a15a;
   font-weight: 700;
+  font-size: 22rpx;
   flex-shrink: 0;
 }
 </style>

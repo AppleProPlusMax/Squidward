@@ -186,24 +186,24 @@ onLoad((query) => {
 
 <style>
 .page {
-  padding: 28rpx 28rpx 60rpx;
+  padding: 20rpx 24rpx 48rpx;
 }
 
 .head {
   display: flex;
   align-items: center;
-  gap: 20rpx;
+  gap: 16rpx;
   background: #1c2030;
-  border-radius: 20rpx;
-  padding: 24rpx;
+  border-radius: 16rpx;
+  padding: 18rpx 20rpx;
 }
 
 .head-icon {
-  width: 120rpx;
-  height: 120rpx;
-  border-radius: 20rpx;
+  width: 92rpx;
+  height: 92rpx;
+  border-radius: 16rpx;
   background: #0e1018;
-  border: 3rpx solid #c8a15a;
+  border: 2rpx solid #c8a15a;
   flex-shrink: 0;
 }
 
@@ -213,22 +213,22 @@ onLoad((query) => {
 }
 
 .name {
-  font-size: 40rpx;
+  font-size: 32rpx;
   font-weight: 700;
 }
 
 .chips {
-  margin: 10rpx 0 6rpx;
+  margin: 6rpx 0 4rpx;
 }
 
 .chip {
   display: inline-block;
-  padding: 4rpx 16rpx;
-  margin-right: 10rpx;
+  padding: 2rpx 12rpx;
+  margin-right: 8rpx;
   border-radius: 999rpx;
   background: #2a3044;
   color: #d5dbe8;
-  font-size: 22rpx;
+  font-size: 20rpx;
 }
 
 .chip.gold {
@@ -245,38 +245,39 @@ onLoad((query) => {
 .foot,
 .hint {
   color: #9aa3b5;
-  font-size: 22rpx;
+  font-size: 20rpx;
 }
 
 .foot {
-  margin-top: 16rpx;
+  margin-top: 12rpx;
 }
 
 .hint {
-  margin: 20rpx 0 4rpx;
-  line-height: 1.5;
+  margin: 12rpx 0 8rpx;
+  line-height: 1.45;
 }
 
 .stat-line {
   color: #7cc4ff;
-  font-size: 26rpx;
-  line-height: 1.8;
+  font-size: 24rpx;
+  line-height: 1.7;
 }
 
 .desc {
   color: #d5dbe8;
-  font-size: 26rpx;
-  line-height: 1.7;
+  font-size: 24rpx;
+  line-height: 1.65;
   white-space: pre-wrap;
 }
 
 .parts {
   display: flex;
   flex-wrap: wrap;
+  gap: 8rpx 0;
 }
 
 .part {
-  width: 25%;
+  width: 20%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -284,17 +285,17 @@ onLoad((query) => {
 
 .part-icon {
   display: block;
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 14rpx;
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 12rpx;
   background: #0e1018;
 }
 
 .part-name {
   width: 100%;
-  margin-top: 8rpx;
+  margin-top: 6rpx;
   color: #d5dbe8;
-  font-size: 20rpx;
+  font-size: 18rpx;
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
