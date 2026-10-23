@@ -1,9 +1,15 @@
 <template>
   <view class="page">
     <view class="hero">
-      <view class="title">英雄图鉴</view>
-      <view class="sub">{{ total }} 位英雄 · 按胜率排序 · {{ patch }}</view>
-      <text class="keep-meta">{{ tierAnchor }}</text>
+      <view class="hero-main">
+        <view class="title">英雄图鉴</view>
+        <view class="sub">{{ total }} 位英雄 · 按胜率排序 · {{ patch }}</view>
+        <text class="keep-meta">{{ tierAnchor }}</text>
+      </view>
+      <view class="rating-entry" @tap="openRating">
+        <text class="rating-entry-icon">⚡</text>
+        <text class="rating-entry-text">隐藏分查询</text>
+      </view>
     </view>
 
     <view class="search-bar">
@@ -15,6 +21,7 @@
         confirm-type="search"
         @input="onInput"
       />
+      <view v-if="keyword" class="search-clear" @tap="clearKeyword">✕</view>
     </view>
 
     <view class="tabs">
@@ -55,7 +62,7 @@
       </view>
     </view>
 
-    <view class="panel" :class="{ off: tab !== 'augment' }">
+    <view v-if="augmentLoaded" class="panel" :class="{ off: tab !== 'augment' }">
       <view v-if="augments.length === 0" class="empty">没有找到这个海克斯</view>
       <view v-else>
         <view v-for="item in augments" :key="item.id" class="hex-row" @tap="openAugment(item.id)">
@@ -82,6 +89,7 @@ const tierAnchor = tierLabel(1)
 
 const keyword = ref("")
 const tab = ref("champion")
+const augmentLoaded = ref(false)
 const role = ref("all")
 const rarity = ref("all")
 const patch = gallery.patch
@@ -89,6 +97,7 @@ const total = gallery.champions.length
 const note = gallery.note
 const champions = ref([])
 const augments = ref([])
+let searchTimer = null
 
 const allChampions = gallery.champions.map((item) => ({
   key: item.key,
@@ -131,23 +140,38 @@ function matchScore(item, query) {
 
 function applyFilter(text) {
   const query = normalize(text)
-  champions.value = allChampions
-    .filter((item) => role.value === "all" || item.tags.indexOf(role.value) >= 0)
-    .filter((item) => matchScore(item, query) < 2)
-    .sort((a, b) => matchScore(a, query) - matchScore(b, query) || a.rank - b.rank)
-  augments.value = allAugments
-    .filter((item) => rarity.value === "all" || item.rarity === rarity.value)
-    .filter((item) => !query || item.search.indexOf(query) >= 0)
-    .map((item, index) => ({ ...item, rank: index + 1 }))
+  if (tab.value === "champion") {
+    champions.value = allChampions
+      .filter((item) => role.value === "all" || item.tags.indexOf(role.value) >= 0)
+      .filter((item) => matchScore(item, query) < 2)
+      .sort((a, b) => matchScore(a, query) - matchScore(b, query) || a.rank - b.rank)
+  } else {
+    augments.value = allAugments
+      .filter((item) => rarity.value === "all" || item.rarity === rarity.value)
+      .filter((item) => !query || item.search.indexOf(query) >= 0)
+      .map((item, index) => ({ ...item, rank: index + 1 }))
+  }
 }
 
 function onInput(event) {
   keyword.value = event.detail.value || ""
-  applyFilter(keyword.value)
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    applyFilter(keyword.value)
+  }, 60)
+}
+
+function clearKeyword() {
+  if (searchTimer) clearTimeout(searchTimer)
+  keyword.value = ""
+  applyFilter("")
 }
 
 function onTab(next) {
   tab.value = next
+  if (next === "augment" && !augmentLoaded.value) {
+    augmentLoaded.value = true
+  }
   applyFilter(keyword.value)
 }
 
@@ -169,12 +193,30 @@ function openAugment(id) {
   })
 }
 
+function openRating() {
+  uni.navigateTo({
+    url: "/pages/rating/rating"
+  })
+}
+
 applyFilter("")
 </script>
 
 <style>
 .page {
   padding: 28rpx 28rpx 48rpx;
+}
+
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.hero-main {
+  flex: 1;
+  min-width: 0;
 }
 
 .hero .title {
@@ -186,6 +228,30 @@ applyFilter("")
   margin-top: 8rpx;
   color: #c8a15a;
   font-size: 24rpx;
+}
+
+.rating-entry {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 14rpx 24rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, rgba(200, 161, 90, 0.26), rgba(200, 161, 90, 0.08));
+  border: 2rpx solid rgba(200, 161, 90, 0.55);
+  color: #f4d58d;
+  font-size: 24rpx;
+  font-weight: 600;
+  flex-shrink: 0;
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+.rating-entry:active {
+  transform: scale(0.96);
+  opacity: 0.85;
+}
+
+.rating-entry-icon {
+  font-size: 26rpx;
 }
 
 .keep-meta {
@@ -200,6 +266,7 @@ applyFilter("")
   background: #1c2030;
   border-radius: 999rpx;
   padding: 0 24rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.04);
 }
 
 .search-icon {
@@ -213,6 +280,14 @@ applyFilter("")
   background: transparent;
   padding: 20rpx 0;
   color: #f4f1e8;
+  font-size: 26rpx;
+}
+
+.search-clear {
+  color: #9aa3b5;
+  padding: 10rpx 8rpx;
+  font-size: 24rpx;
+  flex-shrink: 0;
 }
 
 .tabs,
@@ -234,6 +309,7 @@ applyFilter("")
   background: #1c2030;
   color: #9aa3b5;
   margin-right: 12rpx;
+  font-size: 26rpx;
 }
 
 .tab.on,
@@ -251,26 +327,35 @@ applyFilter("")
 }
 
 .grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 18rpx 12rpx;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 20rpx 14rpx;
 }
 
 .card {
-  width: 124rpx;
+  width: 100%;
+  min-width: 0;
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+.card:active,
+.hex-row:active {
+  transform: scale(0.96);
+  opacity: 0.85;
 }
 
 .shot {
   position: relative;
-  width: 124rpx;
-  height: 124rpx;
+  width: 100%;
+  aspect-ratio: 1 / 1;
 }
 
 .face {
-  width: 124rpx;
-  height: 124rpx;
+  width: 100%;
+  height: 100%;
   border-radius: 18rpx;
   background: #1c2030;
+  display: block;
 }
 
 .no {
@@ -281,7 +366,7 @@ applyFilter("")
   min-width: 28rpx;
   padding: 0 6rpx;
   border-radius: 8rpx;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.6);
   color: #f4f1e8;
   font-size: 20rpx;
   text-align: center;
@@ -300,7 +385,7 @@ applyFilter("")
 
 .epithet,
 .win {
-  margin-top: 6rpx;
+  margin-top: 8rpx;
   text-align: center;
   font-size: 22rpx;
   overflow: hidden;
@@ -310,7 +395,8 @@ applyFilter("")
 
 .win {
   color: #9aa3b5;
-  margin-top: 0;
+  margin-top: 2rpx;
+  font-size: 20rpx;
 }
 
 .hex-row {
@@ -321,6 +407,7 @@ applyFilter("")
   border-radius: 16rpx;
   padding: 16rpx 18rpx;
   margin-bottom: 12rpx;
+  transition: transform 0.12s ease, opacity 0.12s ease;
 }
 
 .rank {
@@ -335,6 +422,7 @@ applyFilter("")
   height: 80rpx;
   border-radius: 16rpx;
   background: #0e1018;
+  flex-shrink: 0;
 }
 
 .main {

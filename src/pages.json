@@ -40,6 +40,17 @@
           }
         }
       ]
+    },
+    {
+      "root": "pages/rating",
+      "pages": [
+        {
+          "path": "rating",
+          "style": {
+            "navigationBarTitleText": "隐藏分查询"
+          }
+        }
+      ]
     }
   ],
   "globalStyle": {
