@@ -1,12 +1,13 @@
 const fs = require("fs")
 const path = require("path")
+const { pickItemIcons } = require("./item-icons")
 const hexdata = require("./hexdata-client")
 
 const ROOT = path.join(__dirname, "..")
 const CATALOG = path.join(ROOT, "src", "pages", "champion", "catalog.js")
 const OUT = path.join(ROOT, "src", "pages", "item", "items.js")
 const HERO_LIMIT = 12
-const MIN_GAMES = 20000
+const MIN_GAMES = 2000
 const MIN_HEROES = 8
 
 const GATED = {
@@ -27,16 +28,6 @@ function grade(win) {
   if (win >= 50) return "A"
   if (win >= 47) return "B"
   return "C"
-}
-
-function number(text) {
-  const match = String(text || "").match(/[\d.]+/)
-  return match ? Number(match[0]) : 0
-}
-
-function count(text) {
-  const digits = String(text || "").replace(/[^\d]/g, "")
-  return digits ? Number(digits) : 0
 }
 
 function stripTags(html) {
@@ -64,63 +55,53 @@ function parseDescription(html) {
   return { stats, effect }
 }
 
-function parseHeroes(html) {
-  const body = (html.match(/<tbody>([\s\S]*?)<\/tbody>/) || [])[1] || ""
-  const rows = []
-  const re = /<tr>([\s\S]*?)<\/tr>/g
-  let match
-  while ((match = re.exec(body))) {
-    const link = match[1].match(/<a href="\/hero\/(\d+)-([^"]+)">([^<]*)<\/a>/)
-    if (!link) continue
-    const cells = []
-    const cellRe = /<td>([\s\S]*?)<\/td>/g
-    let cell
-    while ((cell = cellRe.exec(match[1]))) cells.push(cell[1].replace(/<[^>]+>/g, "").trim())
-    rows.push({
-      key: link[2],
-      score: number(cells[1]),
-      winRate: number(cells[2]),
-      pickRate: number(cells[3]),
-      games: count(cells[4])
-    })
-  }
-  return rows
-}
-
-function parseSummary(html) {
-  const body = (html.match(/<tbody>([\s\S]*?)<\/tbody>/) || [])[1] || ""
-  const rows = {}
-  const re = /<tr>([\s\S]*?)<\/tr>/g
-  let match
-  while ((match = re.exec(body))) {
-    const cells = []
-    const cellRe = /<td>([\s\S]*?)<\/td>/g
-    let cell
-    while ((cell = cellRe.exec(match[1]))) cells.push(cell[1].replace(/<[^>]+>/g, "").trim())
-    if (cells.length < 3) continue
-    rows[cells[0]] = {
-      score: number((cells[1].match(/HexScore\s*[\d.]+/) || [""])[0]),
-      winRate: number((cells[1].match(/胜率\s*[\d.]+%/) || [""])[0]),
-      games: count((cells[1].match(/样本\s*[\d,]+/) || [""])[0]),
-      heroCount: count(cells[2])
-    }
-  }
-  return rows
+function iconIdOf(icon) {
+  return (String(icon || "").match(/\/item\/(\d+)\.png/) || [])[1] || ""
 }
 
 async function main() {
   const catalog = readCatalog()
+  const overview = await hexdata.fetchOverview({ patch: catalog.patch })
+  const opggItems = (await hexdata.getJson("https://lol-api-champion.op.gg/api/meta/items?hl=zh_CN")).data
+  const iconByName = pickItemIcons(opggItems)
+
   const items = {}
+  const iconIdByAramId = {}
+  const summaryByName = {}
+
   let version = ""
   catalog.champions.forEach((champ) => {
     const hit = String(champ.icon || "").match(/cdn\/([\d.]+)\//)
     if (hit && !version) version = hit[1]
     ;(champ.items || []).forEach((item) => {
-      const id = (String(item.icon || "").match(/\/item\/(\d+)\.png/) || [])[1]
+      const id = iconIdOf(item.icon)
       if (id && !items[id]) items[id] = { id, name: item.name, icon: item.icon }
     })
   })
-  if (!version) throw new Error("no ddragon version in catalog")
+  if (!version) version = await hexdata.latestDdragon()
+
+  ;((overview.itemRank && overview.itemRank.all) || []).forEach((row) => {
+    const resItem = overview.itemRes && overview.itemRes[String(row.id)]
+    const name = resItem && resItem.name
+    if (!name) return
+    const icon = iconByName[name] || ""
+    const id = iconIdOf(icon) || String(row.id)
+    iconIdByAramId[String(row.id)] = id
+    if (!items[id]) items[id] = { id, name, icon }
+    summaryByName[name] = {
+      score: hexdata.scoreOf(row.winRate, row.sampleCount),
+      winRate: Math.round((row.winRate || 0) * 1000) / 10,
+      games: row.sampleCount || 0
+    }
+  })
+
+  Object.keys(overview.itemRes || {}).forEach((aramId) => {
+    if (iconIdByAramId[aramId]) return
+    const name = overview.itemRes[aramId] && overview.itemRes[aramId].name
+    const icon = name && iconByName[name]
+    const id = iconIdOf(icon)
+    if (id) iconIdByAramId[aramId] = id
+  })
 
   const dd = (await hexdata.getJson("https://ddragon.leagueoflegends.com/cdn/" + version + "/data/zh_CN/item.json")).data
   const ddByName = {}
@@ -131,16 +112,6 @@ async function main() {
   function ddIcon(id) {
     return "https://ddragon.leagueoflegends.com/cdn/" + version + "/img/item/" + id + ".png"
   }
-
-  // 列表页只请求一次，同时用于汇总数据和详情页编号
-  const listHtml = await hexdata.fetchListPage(catalog.patch, "items")
-  const summary = parseSummary(listHtml)
-
-  // 详情页按装备名称找 Hexdata 的编号，图标编号是其他模式的副本，对不上页面
-  const pageIds = {}
-  const linkRe = /<a href="\/item\/(\d+)">([^<]*)<\/a>/g
-  let link
-  while ((link = linkRe.exec(listHtml))) pageIds[link[2].trim()] = link[1]
 
   const champions = {}
   catalog.champions.forEach((champ) => {
@@ -163,13 +134,14 @@ async function main() {
     const page = hexdata.readHeroPage(catalog.patch, champ.id)
     if (!page) return
     ;(page.itemStats || []).forEach((row) => {
-      const id = String(row.itemId)
+      const id = iconIdByAramId[String(row.itemId)] || String(row.itemId)
       if (!items[id] || !row.games) return
       if (!heroesByItem[id]) heroesByItem[id] = []
+      const wr01 = row.winRate || row.wins / row.games
       heroesByItem[id].push({
         key: champ.key,
-        score: 0,
-        winRate: Math.round(row.wins / row.games * 1000) / 10,
+        score: hexdata.scoreOf(wr01, row.games),
+        winRate: Math.round(wr01 * 1000) / 10,
         pickRate: champ.games ? Math.round(row.games / champ.games * 1000) / 10 : 0,
         games: row.games
       })
@@ -185,9 +157,8 @@ async function main() {
     const from = ((info && info.from) || [])
       .filter((part) => dd[part])
       .map((part) => ({ name: dd[part].name, icon: ddIcon(part) }))
-    const stat = summary[base.name] || {}
-    const page = heroesByItem[id]
-    const rows = (page || []).filter((row) => champions[row.key])
+    const page = heroesByItem[id] || []
+    const rows = page.filter((row) => champions[row.key])
     rows.sort((a, b) => b.winRate - a.winRate || b.games - a.games)
     const solid = rows.filter((row) => row.games >= MIN_GAMES)
     const heroes = (solid.length >= MIN_HEROES ? solid : rows)
@@ -203,9 +174,18 @@ async function main() {
         grade: grade(row.winRate)
       }))
 
+    const stat = summaryByName[base.name] || {}
+    const totalGames = stat.games || rows.reduce((sum, row) => sum + row.games, 0)
+    const winRate =
+      stat.winRate ||
+      (totalGames
+        ? Math.round((rows.reduce((sum, row) => sum + row.games * row.winRate, 0) / totalGames) * 10) / 10
+        : 0)
+    const score = stat.score || hexdata.scoreOf(winRate / 100, totalGames)
+
     if (!info) failed.push(base.name + " no ddragon")
-    if (!stat.winRate) failed.push(base.name + " no summary")
-    if (!page) failed.push(base.name + " no page")
+    if (!winRate) failed.push(base.name + " no summary")
+    if (!rows.length) failed.push(base.name + " no page")
     out[id] = {
       id,
       name: base.name,
@@ -215,18 +195,18 @@ async function main() {
       stats: parsed.stats,
       effect: parsed.effect,
       from,
-      grade: stat.winRate ? grade(stat.winRate) : "",
-      winRate: stat.winRate || 0,
-      score: stat.score || 0,
-      games: stat.games || 0,
-      heroCount: stat.heroCount || 0,
+      grade: winRate ? grade(winRate) : "",
+      winRate: winRate || 0,
+      score: score || 0,
+      games: totalGames || 0,
+      heroCount: rows.length,
       requires: hexByItem[base.name] || null,
       heroes
     }
   })
 
   if (failed.length) console.log("failed", failed.length, failed.join(" | "))
-  const fetched = ids.filter((id) => heroesByItem[id]).length
+  const fetched = ids.filter((id) => (heroesByItem[id] || []).length > 0).length
   fs.writeFileSync(OUT, "export default " + JSON.stringify(out) + ";\n")
   if (fetched < ids.length - 5) {
     console.error("only", fetched, "item pages fetched, rerun to continue")

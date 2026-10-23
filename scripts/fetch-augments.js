@@ -27,16 +27,6 @@ function grade(win) {
   return "C"
 }
 
-function number(text) {
-  const match = String(text || "").match(/[\d.]+/)
-  return match ? Number(match[0]) : 0
-}
-
-function count(text) {
-  const digits = String(text || "").replace(/[^\d]/g, "")
-  return digits ? Number(digits) : 0
-}
-
 function cleanDesc(html) {
   return String(html || "")
     .replace(/<br\s*\/?>/gi, "\n")
@@ -45,31 +35,9 @@ function cleanDesc(html) {
     .trim()
 }
 
-function parseHeroes(html) {
-  const body = (html.match(/<tbody>([\s\S]*?)<\/tbody>/) || [])[1] || ""
-  const rows = []
-  const re = /<tr>([\s\S]*?)<\/tr>/g
-  let match
-  while ((match = re.exec(body))) {
-    const link = match[1].match(/<a href="\/hero\/(\d+)-([^"]+)">([^<]*)<\/a>/)
-    if (!link) continue
-    const cells = []
-    const cellRe = /<td>([\s\S]*?)<\/td>/g
-    let cell
-    while ((cell = cellRe.exec(match[1]))) cells.push(cell[1].replace(/<[^>]+>/g, "").trim())
-    rows.push({
-      key: link[2],
-      title: link[3].trim(),
-      score: number(cells[1]),
-      winRate: number(cells[2]),
-      games: count(cells[3])
-    })
-  }
-  return rows
-}
-
 async function main() {
   const catalog = readCatalog()
+  const overview = await hexdata.fetchOverview({ patch: catalog.patch })
   const champions = {}
   const itemIcon = {}
   catalog.champions.forEach((champ) => {
@@ -81,13 +49,23 @@ async function main() {
 
   const opgg = (await hexdata.getJson("https://lol-api-champion.op.gg/api/meta/aram-augments?hl=zh_CN")).data
   const descByName = {}
+  const descById = {}
   opgg.forEach((item) => {
-    if (item.name) descByName[item.name] = cleanDesc(item.desc || item.tooltip)
+    const cleaned = cleanDesc(item.desc || item.tooltip)
+    if (item.name) descByName[item.name] = cleaned
+    if (item.id != null) descById[String(item.id)] = cleaned
   })
-  function descOf(name) {
-    if (descByName[name]) return descByName[name]
+
+  function descOf(hex) {
+    const aramTooltip =
+      overview.augRes && overview.augRes[String(hex.id)]
+        ? hexdata.formatTooltip(overview.augRes[String(hex.id)].tooltip)
+        : ""
+    if (aramTooltip) return aramTooltip
+    if (descById[String(hex.id)]) return descById[String(hex.id)]
+    if (descByName[hex.name]) return descByName[hex.name]
     const hit = Object.keys(descByName)
-      .filter((key) => key && name.endsWith(key))
+      .filter((key) => key && hex.name.endsWith(key))
       .sort((a, b) => b.length - a.length)[0]
     return hit ? descByName[hit] : ""
   }
@@ -104,28 +82,28 @@ async function main() {
   const slotGames = catalog.champions.reduce((sum, champ) => sum + (champ.games || 0), 0)
 
   const out = {}
-  const failed = []
-  catalog.augments.forEach((hex, index) => {
+  catalog.augments.forEach((hex) => {
     const heroes = []
     let games = 0
-    let wins = 0
     pages.forEach(({ champ, page }) => {
       const row = (page.augments || []).find((item) => String(item.augmentId) === String(hex.id))
       if (!row || !row.games) return
       games += row.games
-      wins += row.wins || 0
+      const wr01 = row.winRate || row.wins / row.games
+      const wr = Math.round(wr01 * 1000) / 10
       heroes.push({
         key: champ.key,
         title: champ.title,
         icon: champ.icon || "",
-        winRate: Math.round(row.wins / row.games * 1000) / 10,
-        score: 0,
+        winRate: wr,
+        score: hexdata.scoreOf(wr01, row.games),
         games: row.games,
-        grade: grade(row.wins / row.games * 100)
+        grade: grade(wr)
       })
     })
     heroes.sort((a, b) => b.winRate - a.winRate || b.games - a.games)
-    const shown = heroes.filter((item) => item.games >= 1000).slice(0, 12)
+    const solid = heroes.filter((item) => item.games >= 500)
+    const shown = (solid.length >= 8 ? solid : heroes).slice(0, 12)
     const items = Object.keys(GATED)
       .filter((name) => hex.name.indexOf(GATED[name]) >= 0)
       .map((name) => ({ name, icon: itemIcon[name] || "" }))
@@ -136,18 +114,16 @@ async function main() {
       rarity: hex.rarity || 0,
       grade: hex.grade,
       winRate: hex.winRate,
-      pickRate: slotGames ? Math.round(games * 10000 / slotGames) / 10 : 0,
-      score: hex.score || 0,
-      games,
+      pickRate: hex.pickRate || (slotGames ? Math.round(games * 10000 / slotGames) / 10 : 0),
+      score: hex.score || hexdata.scoreOf(hex.winRate / 100, hex.games || games),
+      games: hex.games || games,
       heroCount: heroes.length,
-      desc: descOf(hex.name),
+      desc: descOf(hex),
       items,
       heroes: shown
     }
-    if ((index + 1) % 10 === 0) console.log("augments", index + 1)
   })
 
-  if (failed.length) console.log("failed", failed.length, failed.join(" | "))
   const total = Object.keys(out).length
   if (total < catalog.augments.length - 5) {
     console.error("only", total, "augment pages parsed")

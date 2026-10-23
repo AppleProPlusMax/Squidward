@@ -9,8 +9,8 @@ const GEAR = path.join(ROOT, "src", "pages", "champion", "gear.js")
 const MATCHUPS = path.join(ROOT, "src", "pages", "champion", "matchups.js")
 const GEAR_LIMIT = 12
 const PLAN_LIMIT = 6
-const MIN_GEAR_GAMES = 20000
-const MIN_PLAN_GAMES = 1000
+const MIN_GEAR_GAMES = 2000
+const MIN_PLAN_GAMES = 100
 
 function read(file) {
   const raw = fs.readFileSync(file, "utf8").replace(/^export default\s+/, "").replace(/;\s*$/, "")
@@ -18,24 +18,37 @@ function read(file) {
 }
 
 function winRate(row) {
-  return row.games ? Math.round(row.wins / row.games * 1000) / 10 : 0
+  if (row.winRate) return Math.round(row.winRate * 1000) / 10
+  return row.games ? Math.round((row.wins / row.games) * 1000) / 10 : 0
 }
 
 async function main() {
   const catalog = read(CATALOG)
   const patch = catalog.patch
+  const overview = await hexdata.fetchOverview({ patch })
   const items = read(ITEMS)
   const itemById = {}
+  const itemByName = {}
   Object.values(items).forEach((item) => {
-    itemById[item.id] = item
+    itemById[String(item.id)] = item
+    if (item.name) itemByName[item.name] = item
   })
+  Object.keys(overview.itemRes || {}).forEach((aramId) => {
+    if (itemById[aramId]) return
+    const name = overview.itemRes[aramId] && overview.itemRes[aramId].name
+    if (name && itemByName[name]) itemById[aramId] = itemByName[name]
+  })
+
   const augmentName = {}
   catalog.augments.forEach((hex) => {
     augmentName[String(hex.id)] = hex.name
   })
 
   // 一般 fetch-hexdata.js 已经下好，这里只补缺
-  await hexdata.ensureHeroPages(patch, catalog.champions.map((champ) => champ.id))
+  await hexdata.ensureHeroPages(
+    patch,
+    catalog.champions.map((champ) => champ.id)
+  )
 
   const gear = {}
   const matchups = {}
@@ -46,14 +59,17 @@ async function main() {
     ready.push(champ.key)
 
     const ranked = (page.itemStats || [])
-      .filter((row) => itemById[row.itemId])
-      .map((row) => ({
-        id: String(row.itemId),
-        name: itemById[row.itemId].name,
-        icon: itemById[row.itemId].icon,
-        winRate: winRate(row),
-        games: row.games
-      }))
+      .filter((row) => itemById[String(row.itemId)])
+      .map((row) => {
+        const ref = itemById[String(row.itemId)]
+        return {
+          id: String(ref.id),
+          name: ref.name,
+          icon: ref.icon,
+          winRate: winRate(row),
+          games: row.games
+        }
+      })
       .sort((a, b) => b.games - a.games)
     const solid = ranked.filter((row) => row.games >= MIN_GEAR_GAMES)
     gear[champ.key] = (solid.length >= GEAR_LIMIT ? solid : ranked).slice(0, GEAR_LIMIT)
@@ -61,18 +77,22 @@ async function main() {
     const shown = new Set((champ.augments || []).map((item) => item.name))
     const byAugment = {}
     ;(page.augments || []).forEach((group) => {
-      if (!shown.has(augmentName[group.augmentId])) return
-      byAugment[group.augmentId] = (group.items || [])
-        .filter((row) => itemById[row.itemId] && row.games >= MIN_PLAN_GAMES)
-        .map((row) => ({
-          id: String(row.itemId),
-          name: itemById[row.itemId].name,
-          icon: itemById[row.itemId].icon,
-          winRate: winRate(row),
-          games: row.games
-        }))
+      if (!shown.has(augmentName[String(group.augmentId)])) return
+      const allItems = (group.items || [])
+        .filter((row) => itemById[String(row.itemId)] && row.games > 0)
+        .map((row) => {
+          const ref = itemById[String(row.itemId)]
+          return {
+            id: String(ref.id),
+            name: ref.name,
+            icon: ref.icon,
+            winRate: winRate(row),
+            games: row.games
+          }
+        })
         .sort((a, b) => b.games - a.games)
-        .slice(0, PLAN_LIMIT)
+      const solidPlan = allItems.filter((row) => row.games >= MIN_PLAN_GAMES)
+      byAugment[group.augmentId] = (solidPlan.length >= PLAN_LIMIT ? solidPlan : allItems).slice(0, PLAN_LIMIT)
     })
     matchups[champ.key] = byAugment
   })

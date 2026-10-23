@@ -14,7 +14,7 @@
 
 ## 数据说明
 
-胜率来自 [Hexdata](https://hexdata.com.cn/heroes)，当前快照为 **16.20**（2026-10-12）。
+胜率来自 [ARAMKit](https://aramkit.cn)，当前快照为 **16.21**（2026-10-23）。
 
 评级阈值：SS ≥ 56%，S ≥ 53%，A ≥ 50%，B ≥ 47%，低于 47% 为 C。
 
@@ -49,10 +49,9 @@ npm run build:mp-weixin
 
 抓取逻辑在 `scripts/hexdata-client.js`：
 
-- 版本号读自 Hexdata 的 `ai-summary.json`，Data Dragon 版本取最新，不用手改。
-- 响应按版本缓存在 `data/.hexdata/<版本>/`，每个英雄每个版本只下载一次；之后的脚本直接读缓存。
-- 请求串行、gzip 传输，两次请求至少间隔 2 秒（环境变量 `HEXDATA_GAP` 可调）。被限流时按服务器给的 `retryAfterSeconds` 等待后自动继续，不需要手动重跑。
-- 加 `--refresh` 参数会带 ETag 重新校验缓存，适合同一版本内 Hexdata 更新了数据的情况，没变的文件只返回 304。
+- 版本号与资源路径自动读自 `https://data.aramkit.cn/data/versions.json`，Data Dragon 版本取最新，不用手改。
+- 数据按版本缓存在 `data/.aramkit/<版本>/`，全量 173 位英雄并发拉取只需约 10 秒；之后的脚本直接秒读本地缓存。
+- 加 `--refresh` 参数可强制重新拉取当前版本的最新数据。
 
 ## 技术栈
 

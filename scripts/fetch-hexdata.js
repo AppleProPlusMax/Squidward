@@ -6,21 +6,14 @@ const hexdata = require("./hexdata-client")
 
 const ROOT = path.join(__dirname, "..")
 const CATALOG = path.join(ROOT, "src", "pages", "champion", "catalog.js")
-let PATCH = ""
 
 function readCatalog() {
-  const raw = fs.readFileSync(CATALOG, "utf8").replace(/^export default\s+/, "").replace(/;\s*$/, "")
-  return JSON.parse(raw)
-}
-
-function percent(text) {
-  const match = String(text).match(/([\d.]+)\s*%/)
-  return match ? Number(match[1]) : 0
-}
-
-function count(text) {
-  const digits = String(text).replace(/[^\d]/g, "")
-  return digits ? Number(digits) : 0
+  try {
+    const raw = fs.readFileSync(CATALOG, "utf8").replace(/^export default\s+/, "").replace(/;\s*$/, "")
+    return JSON.parse(raw)
+  } catch (err) {
+    return { champions: [], augments: [] }
+  }
 }
 
 function grade(win) {
@@ -31,95 +24,21 @@ function grade(win) {
   return "C"
 }
 
-function parseRows(html) {
-  const rows = []
-  const re = /<tr>([\s\S]*?)<\/tr>/g
-  let match
-  while ((match = re.exec(html))) rows.push(match[1])
-  return rows
-}
-
-function cellText(row) {
-  const cells = []
-  const re = /<td>([\s\S]*?)<\/td>/g
-  let match
-  while ((match = re.exec(row))) cells.push(match[1].replace(/<[^>]+>/g, "").trim())
-  return cells
-}
-
-function cellLink(row) {
-  const match = row.match(/<a href="([^"]+)">([^<]*)<\/a>/)
-  return match ? { href: match[1], text: match[2].trim() } : null
-}
-
-function parseHeroList(html) {
-  const heroes = []
-  parseRows(html).forEach((row) => {
-    const link = cellLink(row)
-    if (!link || link.href.indexOf("/hero/") !== 0) return
-    const cells = cellText(row)
-    const slug = link.href.split("/").pop()
-    const key = slug.replace(/^\d+-/, "")
-    const id = Number(slug.split("-")[0])
-    heroes.push({
-      id,
-      key,
-      slug,
-      label: link.text,
-      winRate: percent(cells[1] || ""),
-      games: count((cells[1] || "").split("样本").pop())
-    })
-  })
-  return heroes
-}
-
-function parseBlurb(html) {
-  const paragraph = (html.match(/<p>Patch[\s\S]*?<\/p>/) || [""])[0].replace(/<[^>]+>/g, "")
-  if (paragraph.indexOf("选取率") >= 0) return paragraph
-  const meta = html.match(/<meta name="description" content="([^"]*)"/)
-  return meta ? meta[1] : paragraph
-}
-
-function parseStatTable(html) {
-  const tables = []
-  const re = /<tbody>([\s\S]*?)<\/tbody>/g
-  let match
-  while ((match = re.exec(html))) tables.push(match[1])
-  return tables.map((body) =>
-    parseRows(body)
-      .map((row) => {
-        const link = cellLink(row)
-        const cells = cellText(row)
-        if (!link) return null
-        return {
-          href: link.href,
-          name: link.text,
-          score: Number(cells[1]) || 0,
-          winRate: percent(cells[2] || ""),
-          games: count(cells[3] || "")
-        }
-      })
-      .filter(Boolean)
-  )
-}
-
 async function main() {
   const report = await hexdata.getReport()
-  PATCH = await hexdata.latestDdragon()
-  console.log("hexdata patch", report.patch, "date", report.date, "ddragon", PATCH)
+  const PATCH = await hexdata.latestDdragon()
+  console.log("aramkit patch", report.patch, "date", report.date, "ddragon", PATCH)
+
+  const overview = await hexdata.fetchOverview(report)
   const catalog = readCatalog()
   const championIcon = {}
   const augmentIcon = {}
   const itemIcon = {}
+
   catalog.champions.forEach((champ) => {
     championIcon[champ.key] = champ.icon
     ;(champ.augments || []).forEach((item) => {
       if (item.name && item.icon) augmentIcon[item.name] = item.icon
-    })
-    ;(champ.cores || []).forEach((row) => {
-      row.forEach((item) => {
-        if (item.name && item.icon) itemIcon[item.name] = item.icon
-      })
     })
   })
   catalog.augments.forEach((item) => {
@@ -130,32 +49,47 @@ async function main() {
   Object.assign(itemIcon, pickItemIcons(itemMeta))
   const augmentMeta = (await hexdata.getJson("https://lol-api-champion.op.gg/api/meta/aram-augments?hl=zh_CN")).data
   const augmentRarity = {}
+  const augmentIconById = {}
+  const augmentRarityById = {}
   augmentMeta.forEach((item) => {
-    if (!item.name) return
-    if (item.rarity != null) augmentRarity[item.name] = item.rarity
-    if (!item.largeIcon) return
-    const url = item.largeIcon.includes("?") ? item.largeIcon : item.largeIcon + "?image=q_auto:good,f_png,w_128"
-    augmentIcon[item.name] = url
+    if (item.rarity != null) {
+      if (item.name) augmentRarity[item.name] = item.rarity
+      if (item.id != null) augmentRarityById[String(item.id)] = item.rarity
+    }
+    if (item.largeIcon) {
+      const url = item.largeIcon.includes("?") ? item.largeIcon : item.largeIcon + "?image=q_auto:good,f_png,w_128"
+      if (item.name) augmentIcon[item.name] = url
+      if (item.id != null) augmentIconById[String(item.id)] = url
+    }
   })
 
   const championsJson = (
     await hexdata.getJson("https://ddragon.leagueoflegends.com/cdn/" + PATCH + "/data/zh_CN/champion.json")
   ).data
+  const ddByNumId = {}
   const tags = {}
   const spoken = {}
   const given = {}
   Object.keys(championsJson).forEach((id) => {
     const row = championsJson[id]
     const key = id.toLowerCase()
+    ddByNumId[String(row.key)] = { id: Number(row.key), key, name: row.title, title: row.name }
     tags[key] = row.tags || []
-    spoken[key] = row.title
-    given[key] = row.name
+    spoken[key] = row.name
+    given[key] = row.title
     championIcon[key] = "https://ddragon.leagueoflegends.com/cdn/" + PATCH + "/img/champion/" + id + ".png"
   })
 
   const itemName = {}
+  Object.keys(overview.itemRes || {}).forEach((id) => {
+    if (overview.itemRes[id] && overview.itemRes[id].name) {
+      itemName[String(id)] = overview.itemRes[id].name
+    }
+  })
   itemMeta.forEach((entry) => {
-    if (entry.id != null && entry.name) itemName[String(entry.id)] = entry.name
+    if (entry.id != null && entry.name && !itemName[String(entry.id)]) {
+      itemName[String(entry.id)] = entry.name
+    }
   })
   const ddItems = (
     await hexdata.getJson("https://ddragon.leagueoflegends.com/cdn/" + PATCH + "/data/zh_CN/item.json")
@@ -164,44 +98,77 @@ async function main() {
     if (!itemName[id] && ddItems[id].name) itemName[id] = ddItems[id].name
   })
 
-  console.log("fetch augment list")
-  const augmentHtml = await hexdata.fetchListPage(report.patch, "augments")
-  const augmentRows = parseRows(augmentHtml)
-  const augments = []
+  function iconOf(name, id) {
+    if (id != null && augmentIconById[String(id)]) return augmentIconById[String(id)]
+    if (augmentIcon[name]) return augmentIcon[name]
+    const hit = Object.keys(augmentIcon)
+      .filter((key) => key && name.endsWith(key))
+      .sort((a, b) => b.length - a.length)[0]
+    return hit ? augmentIcon[hit] : ""
+  }
+
+  function rarityOf(name, id) {
+    const resItem = id != null && overview.augRes && overview.augRes[String(id)]
+    if (resItem && resItem.rarity) return hexdata.rarityCode(resItem.rarity)
+    if (id != null && augmentRarityById[String(id)]) return augmentRarityById[String(id)]
+    if (augmentRarity[name]) return augmentRarity[name]
+    const hit = Object.keys(augmentRarity)
+      .filter((key) => key && name.endsWith(key))
+      .sort((a, b) => b.length - a.length)[0]
+    return hit ? augmentRarity[hit] : 0
+  }
+
   const augmentName = {}
-  augmentRows.forEach((row) => {
-    const link = cellLink(row)
-    if (!link || link.href.indexOf("/augment/") !== 0) return
-    const cells = cellText(row)
-    const id = Number(link.href.split("/").pop().split("-")[0])
-    const summary = cells[1] || ""
-    augmentName[String(id)] = link.text
-    augments.push({
-      id,
-      name: link.text,
-      score: Number((summary.match(/综合评分\s*([\d.]+)/) || [])[1]) || 0,
-      winRate: percent((summary.match(/胜率\s*[\d.]+%/) || [""])[0]),
-      rarity: rarityOf(link.text),
-      icon: iconOf(link.text)
+  const augments = ((overview.augRank && overview.augRank.all) || [])
+    .map((row) => {
+      const info = (overview.augRes && overview.augRes[String(row.id)]) || {}
+      const name = info.name
+      if (!name) return null
+      const winRate = Math.round((row.winRate || 0) * 1000) / 10
+      augmentName[String(row.id)] = name
+      return {
+        id: Number(row.id),
+        name,
+        score: hexdata.scoreOf(row.winRate, row.sampleCount),
+        winRate,
+        pickRate: Math.round((row.pickRate || 0) * 1000) / 10,
+        games: row.sampleCount || 0,
+        rarity: rarityOf(name, row.id),
+        icon: iconOf(name, row.id)
+      }
     })
-  })
-  augments.sort((a, b) => b.winRate - a.winRate)
+    .filter(Boolean)
+
+  augments.sort((a, b) => b.winRate - a.winRate || b.games - a.games)
   augments.forEach((item, index) => {
     item.rank = index + 1
     item.grade = grade(item.winRate)
   })
   console.log("augments", augments.length, augments[0] && augments[0].name, augments[0] && augments[0].winRate)
 
-  console.log("fetch hero list")
-  const heroHtml = await hexdata.fetchListPage(report.patch, "heroes")
-  const listed = parseHeroList(heroHtml)
+  const listed = ((overview.champRank && overview.champRank.rows) || [])
+    .map((row) => {
+      const dd = ddByNumId[String(row.id)]
+      if (!dd) return null
+      return {
+        id: Number(row.id),
+        key: dd.key,
+        name: dd.name,
+        title: dd.title,
+        winRate: Math.round((row.winRate || 0) * 1000) / 10,
+        pickRate: Math.round((row.pickRate || 0) * 1000) / 10,
+        games: row.sampleCount || 0
+      }
+    })
+    .filter(Boolean)
+
   console.log("heroes", listed.length)
   if (listed.length < 150) {
     console.error("hero list too short")
     process.exit(1)
   }
 
-  await hexdata.ensureHeroPages(report.patch, listed.map((hero) => hero.id))
+  await hexdata.ensureHeroPages(report, listed.map((hero) => hero.id))
 
   const gatedNames = {
     金铲铲: true,
@@ -211,27 +178,27 @@ async function main() {
   }
   const details = []
   const failed = []
-  let done = 0
   listed.forEach((hero) => {
     const page = hexdata.readHeroPage(report.patch, hero.id)
     if (!page) {
       failed.push(hero.key + " missing")
       return
     }
-    const augments = (page.augments || [])
+    const heroAugments = (page.augments || [])
       .map((row) => {
         const name = augmentName[String(row.augmentId)]
         if (!name || !row.games) return null
         return {
+          id: row.augmentId,
           name,
-          score: 0,
-          winRate: Math.round(row.wins / row.games * 1000) / 10,
+          score: hexdata.scoreOf(row.winRate, row.games),
+          winRate: Math.round((row.winRate || row.wins / row.games) * 1000) / 10,
           games: row.games
         }
       })
       .filter(Boolean)
-    const solidAugments = augments.filter((item) => item.games >= 1000)
-    const rankedAugments = (solidAugments.length >= 8 ? solidAugments : augments)
+    const solidAugments = heroAugments.filter((item) => item.games >= 1000)
+    const rankedAugments = (solidAugments.length >= 8 ? solidAugments : heroAugments)
       .sort((a, b) => b.winRate - a.winRate || b.games - a.games)
       .slice(0, 8)
     const namedItems = (page.itemStats || [])
@@ -240,8 +207,8 @@ async function main() {
         if (!name || !row.games) return null
         return {
           name,
-          score: 0,
-          winRate: Math.round(row.wins / row.games * 1000) / 10,
+          score: hexdata.scoreOf(row.winRate, row.games),
+          winRate: Math.round((row.winRate || row.wins / row.games) * 1000) / 10,
           games: row.games
         }
       })
@@ -255,8 +222,6 @@ async function main() {
       augments: rankedAugments,
       items: shop.concat(rewards)
     })
-    done += 1
-    if (done % 20 === 0) console.log("pages", done)
   })
 
   if (failed.length) console.log("failed", failed.length, failed.slice(0, 12).join(" | "))
@@ -266,20 +231,17 @@ async function main() {
     process.exit(1)
   }
 
-  const slotGames = listed.reduce((sum, hero) => sum + hero.games, 0)
-
   const byWin = details.slice().sort((a, b) => b.hero.winRate - a.hero.winRate || b.hero.games - a.hero.games)
   const champions = byWin.map((row, index) => {
     const old = catalog.champions.find((item) => item.key === row.hero.key) || {}
-    const split = String(row.hero.label).match(/^(.+?)（(.+)）$/)
     return {
       id: row.hero.id,
       key: row.hero.key,
-      name: (split && split[2]) || old.name || given[row.hero.key] || row.hero.key,
-      title: (split && split[1]) || old.title || spoken[row.hero.key] || row.hero.label,
+      name: row.hero.name || old.name || given[row.hero.key] || row.hero.key,
+      title: row.hero.title || old.title || spoken[row.hero.key] || row.hero.key,
       tags: tags[row.hero.key] || [],
       winRate: row.hero.winRate,
-      pickRate: slotGames ? Math.round(row.hero.games * 10000 / slotGames) / 10 : 0,
+      pickRate: row.hero.pickRate,
       games: row.hero.games,
       grade: grade(row.hero.winRate),
       tierLabel: "",
@@ -292,8 +254,8 @@ async function main() {
         winRate: item.winRate,
         games: item.games,
         grade: grade(item.winRate),
-        icon: iconOf(item.name),
-        rarity: rarityOf(item.name)
+        icon: iconOf(item.name, item.id),
+        rarity: rarityOf(item.name, item.id)
       })),
       items: row.items.map((item) => ({
         name: item.name,
@@ -305,29 +267,13 @@ async function main() {
     }
   })
 
-  function iconOf(name) {
-    if (augmentIcon[name]) return augmentIcon[name]
-    const hit = Object.keys(augmentIcon)
-      .filter((key) => key && name.endsWith(key))
-      .sort((a, b) => b.length - a.length)[0]
-    return hit ? augmentIcon[hit] : ""
-  }
-
-  function rarityOf(name) {
-    if (augmentRarity[name]) return augmentRarity[name]
-    const hit = Object.keys(augmentRarity)
-      .filter((key) => key && name.endsWith(key))
-      .sort((a, b) => b.length - a.length)[0]
-    return hit ? augmentRarity[hit] : 0
-  }
-
   const next = {
     patch: report.patch,
-    source: "Hexdata",
-    sourceUrl: "https://hexdata.com.cn/heroes",
+    source: "ARAMKit",
+    sourceUrl: "https://aramkit.cn",
     updatedAt: report.date,
-    note: "胜率来自 Hexdata " + report.patch + "（" + report.date + "），按英雄胜率排序。SS≥56%，S≥53%，A≥50%，B≥47%。",
-    augments: augments.filter((item) => item.winRate > 0).slice(0, 80),
+    note: "胜率来自 ARAMKit " + report.patch + "（" + report.date + "），按英雄胜率排序。SS≥56%，S≥53%，A≥50%，B≥47%。",
+    augments: augments.filter((item) => item.winRate > 0),
     champions
   }
   fs.writeFileSync(CATALOG, "export default " + JSON.stringify(next) + ";\n")
